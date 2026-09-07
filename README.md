@@ -5,9 +5,10 @@ Miércoles Mañana. Basado en el [scaffold de la materia](https://github.com/Man
 
 ## Integrantes
 
-<!-- Completar: nombre completo y usuario de GitHub de cada integrante -->
-
-- Nombre Apellido — [@usuario-github](https://github.com/usuario-github)
+- Máximo Bonarrico — [@Maxi414](https://github.com/Maxi414)
+- Valentín Díaz Imbernón — [@ValentinoDiaz0509](https://github.com/ValentinoDiaz0509)
+- Fiel Machado — <!-- completar usuario de GitHub -->
+- Alex Sandro — <!-- completar usuario de GitHub -->
 
 ## Dominio
 
