@@ -7,8 +7,7 @@ Miércoles Mañana. Basado en el [scaffold de la materia](https://github.com/Man
 
 - Máximo Bonarrico — [@Maxi414](https://github.com/Maxi414)
 - Valentín Díaz Imbernón — [@ValentinoDiaz0509](https://github.com/ValentinoDiaz0509)
-- Fiel Machado — <!-- completar usuario de GitHub -->
-- Alex Sandro — <!-- completar usuario de GitHub -->
+- Fiel Machado Alex Sandro — <!-- completar usuario de GitHub -->
 
 ## Dominio
 
