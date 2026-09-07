@@ -13,19 +13,18 @@ import uade.prog3.tpo.repository.NodoRepository;
 import java.util.List;
 
 /**
- * Carga un grafo chico de ejemplo para que la aplicacion sea probable
- * apenas se levanta, sin tener que cargar datos a mano.
+ * Carga el grafo del dominio propio del grupo: una red logistica de ultima
+ * milla (reparto de paquetes desde un deposito central). Reemplaza la
+ * semilla generica (nodos A..H) del scaffold. Detalle completo del dominio
+ * en el README, seccion "Dominio".
  *
- * El dominio es DELIBERADAMENTE generico (nodos A..H). Cada grupo lo
- * reemplaza por el suyo y pone app.seed.enabled=false, o bien reescribe
- * esta clase con sus propios datos.
- *
- * El grafo elegido tiene, a proposito:
+ * El grafo tiene, a proposito, las mismas propiedades que exigia la
+ * semilla original:
  *   - 8 vertices y 12 aristas: chico para verificar a mano, grande para
  *     que los algoritmos no den resultados triviales
- *   - todos los costos positivos, para que Dijkstra sea aplicable
+ *   - todos los costos positivos (km), para que Dijkstra sea aplicable
  *   - es conexo, para que Prim y Kruskal tengan solucion
- *   - hay al menos un camino donde el mas corto NO es el directo, para
+ *   - CD-BE directo (12 km) es mas caro que CD-PA-BE (5+4=9 km), para
  *     que se note la relajacion de aristas
  */
 @Component
@@ -49,47 +48,51 @@ public class CargaInicial implements CommandLineRunner {
             return;
         }
 
-        Nodo a = new Nodo("A", "Nodo A", "CENTRO", 0);
-        Nodo b = new Nodo("B", "Nodo B", "PUNTO", 12);
-        Nodo c = new Nodo("C", "Nodo C", "PUNTO", 8);
-        Nodo d = new Nodo("D", "Nodo D", "PUNTO", 15);
-        Nodo e = new Nodo("E", "Nodo E", "PUNTO", 6);
-        Nodo f = new Nodo("F", "Nodo F", "PUNTO", 20);
-        Nodo g = new Nodo("G", "Nodo G", "PUNTO", 9);
-        Nodo h = new Nodo("H", "Nodo H", "PUNTO", 4);
+        // valor = demanda diaria promedio, en cantidad de paquetes (0 para el deposito)
+        Nodo cd = new Nodo("CD", "Deposito Central", "DEPOSITO", 0);
+        Nodo pa = new Nodo("PA", "Palermo", "CLIENTE", 12);
+        Nodo be = new Nodo("BE", "Belgrano", "CLIENTE", 8);
+        Nodo re = new Nodo("RE", "Recoleta", "CLIENTE", 15);
+        Nodo al = new Nodo("AL", "Almagro", "CLIENTE", 6);
+        Nodo bo = new Nodo("BO", "Boedo", "CLIENTE", 20);
+        Nodo fl = new Nodo("FL", "Flores", "CLIENTE", 9);
+        Nodo cb = new Nodo("CB", "Caballito", "CLIENTE", 4);
 
-        // El camino directo A->C cuesta 9, pero A->B->C cuesta 4+3=7.
+        // costo = distancia en km.
+        // El camino directo CD->BE cuesta 12, pero CD->PA->BE cuesta 5+4=9.
         // Sirve para verificar que la relajacion de aristas este bien hecha.
-        a.conectar(b, 4);
-        a.conectar(c, 9);
-        b.conectar(c, 3);
-        b.conectar(d, 7);
-        c.conectar(d, 2);
-        c.conectar(e, 11);
-        d.conectar(e, 5);
-        d.conectar(f, 8);
-        e.conectar(f, 6);
-        e.conectar(g, 10);
-        f.conectar(h, 3);
-        g.conectar(h, 4);
+        cd.conectar(pa, 5);
+        cd.conectar(be, 12);
+        pa.conectar(be, 4);
+        pa.conectar(re, 8);
+        be.conectar(re, 3);
+        be.conectar(al, 10);
+        re.conectar(al, 6);
+        re.conectar(bo, 9);
+        al.conectar(bo, 7);
+        al.conectar(fl, 11);
+        bo.conectar(cb, 4);
+        fl.conectar(cb, 5);
 
-        nodoRepository.saveAll(List.of(a, b, c, d, e, f, g, h));
+        nodoRepository.saveAll(List.of(cd, pa, be, re, al, bo, fl, cb));
 
-        // Items para los problemas de seleccion bajo restriccion.
+        // Paquetes para los problemas de seleccion bajo restriccion
+        // (greedy, mochila 0/1 con PD, Branch & Bound de reparto entre vehiculos).
+        // peso = kg que consume del vehiculo, valor = valor asegurado en pesos.
         //
-        // Calibrado a proposito: con capacidad 10, greedy por ratio valor/peso
-        // elige {I4, I2} y obtiene 90, mientras que el optimo real es {I4, I5}
-        // con 105. Es el contraejemplo que se necesita para comparar greedy
-        // contra programacion dinamica.
+        // Calibrado a proposito: con capacidad 10 kg, el greedy por ratio
+        // valor/peso elige {I4, I2} y obtiene 90, mientras que el optimo real
+        // es {I4, I5} con 105. Es el contraejemplo que pide documentar el
+        // Hito 6 (greedy contra programacion dinamica).
         itemRepository.saveAll(List.of(
-                new Item("I1", "Item 1", 5, 10, "A"),
-                new Item("I2", "Item 2", 4, 40, "B"),
-                new Item("I3", "Item 3", 6, 30, "C"),
-                new Item("I4", "Item 4", 3, 50, "D"),
-                new Item("I5", "Item 5", 7, 55, "E")
+                new Item("I1", "Paquete 1", 5, 10, "CD"),
+                new Item("I2", "Paquete 2", 4, 40, "PA"),
+                new Item("I3", "Paquete 3", 6, 30, "BE"),
+                new Item("I4", "Paquete 4", 3, 50, "RE"),
+                new Item("I5", "Paquete 5", 7, 55, "AL")
         ));
 
-        log.info("Carga inicial completada: 8 nodos, 12 aristas, 5 items.");
+        log.info("Carga inicial completada: 8 nodos, 12 aristas, 5 paquetes.");
         log.info("Para desactivarla: app.seed.enabled=false");
     }
 }
