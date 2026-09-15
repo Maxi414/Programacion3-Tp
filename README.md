@@ -91,11 +91,46 @@ Con capacidad 10: el greedy por ratio valor/peso elige {I4, I2} = 90, pero el
 óptimo real (mochila 0/1 con PD) es {I4, I5} = 105 — el contraejemplo que
 pide documentar el Hito 6.
 
-### Próximo paso (Hito 4)
+### Hito 4 — dominio cargado y recorridos
 
-Este grafo todavía no está cargado en Neo4j: `CargaInicial.java` sigue con
-el grafo semilla (A..H) del scaffold. Cargarlo — reemplazando la semilla — y
-correr BFS/DFS sobre él es el Hito 4.
+El grafo de arriba está cargado en Neo4j (`CargaInicial.java`), reemplazando
+la semilla A..H del scaffold. BFS y DFS funcionan sobre él a través de
+`GET /api/grafo/bfs` y `GET /api/grafo/dfs`.
+
+### Hito 5 — caminos mínimos y MST, verificados sobre el grafo del grupo
+
+Dijkstra (con reconstrucción de camino), Prim y Kruskal (con Union-Find) ya
+estaban implementados en `CaminosMinimos.java` y `ArbolRecubrimiento.java`.
+Lo que agrega este hito es la verificación contra el grafo propio: la clase
+`Hito5DominioTest` en `AlgoritmosTest.java` (y su espejo en
+`verificacion/Verificacion.java`) arma el grafo `dominio()` con las mismas 8
+paradas y 12 tramos de `CargaInicial`, y comprueba con asserts los valores
+calculados a mano más arriba:
+
+- `dijkstra(CD, BE)` = 9 por `CD→PA→BE`, no 12 por el tramo directo.
+- `dijkstra(CD, *)`: PA=5, BE=9, RE=12, AL=18, BO=21, FL=29, CB=25.
+- `prim(CD)` y `kruskal()` dan costo total **34** con 7 tramos, mismo
+  resultado por los dos caminos.
+
+### Hito 6 — greedy contra programación dinámica, con el contraejemplo documentado
+
+`Seleccion.java` ya resolvía la mochila 0/1 con tabla `dp` y recuperación del
+camino (bottom-up, ver el método `programacionDinamica`). El contraejemplo
+donde el greedy del Hito 3 **no** da el óptimo está documentado arriba, en la
+tabla de paquetes, y ahora también verificado con test: `Hito6DominioTest`
+corre greedy y PD sobre los paquetes tal como los carga `CargaInicial`
+(nodoId = depósito/cliente real, no genéricos `A..E`) y confirma que:
+
+- greedy elige `{I2, I4}` = 90 y deja 3 kg de capacidad sin usar.
+- la PD encuentra el óptimo real `{I4, I5}` = 105, usando los 10 kg completos.
+- la diferencia es exactamente 15: el costo de que greedy sea una decisión
+  irrevocable en mochila 0/1.
+
+### Próximo paso (Hito 7)
+
+Falta Floyd-Warshall (ya implementado en `CaminosMinimos.java`, sin usar
+todavía) comparado en cantidad de nodos expandidos contra correr Dijkstra V
+veces sobre el grafo del grupo.
 
 ## Arranque rápido
 

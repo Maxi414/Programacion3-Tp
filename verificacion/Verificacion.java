@@ -44,6 +44,26 @@ public class Verificacion {
         return r;
     }
 
+    /** El grafo del dominio propio (red logistica), el que carga CargaInicial desde el hito 4. */
+    static Grafo dominio() {
+        Grafo g = new Grafo(false);
+        g.agregarArista("CD","PA",5);  g.agregarArista("CD","BE",12);
+        g.agregarArista("PA","BE",4);  g.agregarArista("PA","RE",8);
+        g.agregarArista("BE","RE",3);  g.agregarArista("BE","AL",10);
+        g.agregarArista("RE","AL",6);  g.agregarArista("RE","BO",9);
+        g.agregarArista("AL","BO",7);  g.agregarArista("AL","FL",11);
+        g.agregarArista("BO","CB",4);  g.agregarArista("FL","CB",5);
+        return g;
+    }
+
+    /** Los mismos paquetes que carga CargaInicial sobre el dominio propio. */
+    static List<Item> paquetesDominio() {
+        return List.of(
+            new Item("I1","Paquete 1",5,10,"CD"), new Item("I2","Paquete 2",4,40,"PA"),
+            new Item("I3","Paquete 3",6,30,"BE"), new Item("I4","Paquete 4",3,50,"RE"),
+            new Item("I5","Paquete 5",7,55,"AL"));
+    }
+
     public static void main(String[] args) {
         Grafo dir = semilla(true), noDir = semilla(false);
 
@@ -83,6 +103,24 @@ public class Verificacion {
         check("kruskal cantidad de aristas", 7, krus.aristas().size());
         check("prim y kruskal coinciden en costo", prim.costoTotal(), krus.costoTotal());
 
+        System.out.println("\n=== CAMINOS MINIMOS Y MST SOBRE EL GRAFO DEL GRUPO (hito 5) ===");
+        Grafo dom = dominio();
+        var cdBe = cm.dijkstra(dom, "CD", "BE");
+        check("dijkstra(CD,BE) costo  [no el directo 12]", 9.0, cdBe.costoTotal());
+        check("dijkstra(CD,BE) camino", "[CD, PA, BE]", cdBe.vertices());
+        check("dijkstra(CD,PA)", 5.0, cm.dijkstra(dom,"CD","PA").costoTotal());
+        check("dijkstra(CD,RE)", 12.0, cm.dijkstra(dom,"CD","RE").costoTotal());
+        check("dijkstra(CD,AL)", 18.0, cm.dijkstra(dom,"CD","AL").costoTotal());
+        check("dijkstra(CD,BO)", 21.0, cm.dijkstra(dom,"CD","BO").costoTotal());
+        check("dijkstra(CD,FL)", 29.0, cm.dijkstra(dom,"CD","FL").costoTotal());
+        check("dijkstra(CD,CB)", 25.0, cm.dijkstra(dom,"CD","CB").costoTotal());
+        var primDom = ar.prim(dom, "CD");
+        check("prim(CD) costo total sobre el dominio", 34.0, primDom.costoTotal());
+        check("prim(CD) cantidad de aristas (V-1)", 7, primDom.aristas().size());
+        var krusDom = ar.kruskal(dom);
+        check("kruskal costo total sobre el dominio", 34.0, krusDom.costoTotal());
+        check("prim y kruskal coinciden en costo sobre el dominio", primDom.costoTotal(), krusDom.costoTotal());
+
         System.out.println("\n=== ORDENAMIENTO (hito 2, 1 punto) ===");
         Ordenamiento ord = new Ordenamiento();
         Comparator<Item> porPeso = Comparator.comparingDouble(Item::getPeso);
@@ -101,6 +139,15 @@ public class Verificacion {
         check("PD(10) peso", 10.0, pd.pesoTotal());
         check("PD(10) elegidos", "[I4, I5]", ids(pd.elegidos()));
         check("greedy NO alcanza el optimo", true, g.valorTotal() < pd.valorTotal());
+
+        System.out.println("\n=== GREEDY vs PD SOBRE LOS PAQUETES DEL GRUPO (hito 6) ===");
+        var gDom = sel.greedy(paquetesDominio(), 10);
+        check("greedy(10) valor sobre el dominio", 90.0, gDom.valorTotal());
+        check("greedy(10) elegidos sobre el dominio", "[I4, I2]", ids(gDom.elegidos()));
+        var pdDom = sel.programacionDinamica(paquetesDominio(), 10);
+        check("PD(10) valor [OPTIMO] sobre el dominio", 105.0, pdDom.valorTotal());
+        check("PD(10) elegidos sobre el dominio", "[I4, I5]", ids(pdDom.elegidos()));
+        check("greedy NO alcanza el optimo sobre el dominio", true, gDom.valorTotal() < pdDom.valorTotal());
 
         System.out.println("\n=== BACKTRACKING (hito 8, 1 punto) ===");
         Backtracking bt = new Backtracking();

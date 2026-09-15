@@ -57,6 +57,38 @@ class AlgoritmosTest {
         return r;
     }
 
+    /**
+     * El grafo del dominio propio (red logistica de ultima milla), el mismo
+     * que carga CargaInicial en Neo4j desde el hito 4. Nodos = deposito y
+     * puntos de entrega, costo de arista = distancia en km.
+     */
+    private Grafo dominio() {
+        Grafo g = new Grafo(false);
+        g.agregarArista("CD", "PA", 5);
+        g.agregarArista("CD", "BE", 12);
+        g.agregarArista("PA", "BE", 4);
+        g.agregarArista("PA", "RE", 8);
+        g.agregarArista("BE", "RE", 3);
+        g.agregarArista("BE", "AL", 10);
+        g.agregarArista("RE", "AL", 6);
+        g.agregarArista("RE", "BO", 9);
+        g.agregarArista("AL", "BO", 7);
+        g.agregarArista("AL", "FL", 11);
+        g.agregarArista("BO", "CB", 4);
+        g.agregarArista("FL", "CB", 5);
+        return g;
+    }
+
+    /** Los mismos paquetes que carga CargaInicial sobre el dominio propio. */
+    private List<Item> paquetesDominio() {
+        return List.of(
+                new Item("I1", "Paquete 1", 5, 10, "CD"),
+                new Item("I2", "Paquete 2", 4, 40, "PA"),
+                new Item("I3", "Paquete 3", 6, 30, "BE"),
+                new Item("I4", "Paquete 4", 3, 50, "RE"),
+                new Item("I5", "Paquete 5", 7, 55, "AL"));
+    }
+
     // ------------------------------------------------------------------
     @Nested
     @DisplayName("Recorridos - 2 puntos")
@@ -211,6 +243,50 @@ class AlgoritmosTest {
 
     // ------------------------------------------------------------------
     @Nested
+    @DisplayName("Hito 5 - Dijkstra, Prim y Kruskal sobre el grafo del grupo")
+    class Hito5DominioTest {
+
+        private final CaminosMinimos caminos = new CaminosMinimos();
+        private final ArbolRecubrimiento arbol = new ArbolRecubrimiento();
+
+        @Test
+        void dijkstraEligeCdPaBeYNoElDirecto() {
+            // CD->BE directo cuesta 12; por CD->PA->BE cuesta 5+4=9. Calculado
+            // a mano en el README, seccion "El grafo del grupo".
+            var c = caminos.dijkstra(dominio(), "CD", "BE");
+            assertEquals(9.0, c.costoTotal(), 1e-9);
+            assertEquals(List.of("CD", "PA", "BE"), c.vertices());
+        }
+
+        @Test
+        void dijkstraDesdeCdCoincideConElCalculoAMano() {
+            Grafo g = dominio();
+            assertEquals(5.0, caminos.dijkstra(g, "CD", "PA").costoTotal(), 1e-9);
+            assertEquals(9.0, caminos.dijkstra(g, "CD", "BE").costoTotal(), 1e-9);
+            assertEquals(12.0, caminos.dijkstra(g, "CD", "RE").costoTotal(), 1e-9);
+            assertEquals(18.0, caminos.dijkstra(g, "CD", "AL").costoTotal(), 1e-9);
+            assertEquals(21.0, caminos.dijkstra(g, "CD", "BO").costoTotal(), 1e-9);
+            assertEquals(29.0, caminos.dijkstra(g, "CD", "FL").costoTotal(), 1e-9);
+            assertEquals(25.0, caminos.dijkstra(g, "CD", "CB").costoTotal(), 1e-9);
+        }
+
+        @Test
+        void primDaCostoTotal34ConLasSieteAristasDelCalculoAMano() {
+            var mst = arbol.prim(dominio(), "CD");
+            assertEquals(34.0, mst.costoTotal(), 1e-9);
+            assertEquals(7, mst.aristas().size(), "V-1 aristas con V=8");
+        }
+
+        @Test
+        void kruskalDaElMismoCostoQuePrimSobreElDominio() {
+            Grafo g = dominio();
+            assertEquals(34.0, arbol.kruskal(g).costoTotal(), 1e-9);
+            assertEquals(arbol.prim(g, "CD").costoTotal(), arbol.kruskal(g).costoTotal(), 1e-9);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    @Nested
     @DisplayName("Ordenamiento - 1 punto")
     class OrdenamientoTest {
 
@@ -298,6 +374,34 @@ class AlgoritmosTest {
             List<Item> fraccionario = List.of(new Item("F1", "f1", 2.5, 10, null));
             assertThrows(IllegalArgumentException.class,
                     () -> seleccion.programacionDinamica(fraccionario, 10));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    @Nested
+    @DisplayName("Hito 6 - greedy contra PD sobre los paquetes del grupo")
+    class Hito6DominioTest {
+
+        private final Seleccion seleccion = new Seleccion(new Ordenamiento());
+
+        @Test
+        void greedySobrePaquetesDelDominioNoAlcanzaElOptimo() {
+            // Mismo contraejemplo del README/ENDPOINTS.md, pero con los
+            // paquetes tal como los carga CargaInicial sobre el dominio
+            // propio (nodoId = deposito/cliente en vez de A..E genericos).
+            var g = seleccion.greedy(paquetesDominio(), 10);
+            assertEquals(List.of("I4", "I2"), ids(g.elegidos()), "greedy toma por ratio: I4 y despues I2");
+            assertEquals(90.0, g.valorTotal(), 1e-9);
+
+            var pd = seleccion.programacionDinamica(paquetesDominio(), 10);
+            assertEquals(List.of("I4", "I5"), ids(pd.elegidos()), "el optimo real es I4 e I5");
+            assertEquals(105.0, pd.valorTotal(), 1e-9);
+            assertEquals(10.0, pd.pesoTotal(), 1e-9);
+
+            assertTrue(g.valorTotal() < pd.valorTotal(),
+                    "greedy da " + g.valorTotal() + " y el optimo es " + pd.valorTotal());
+            assertEquals(15.0, pd.valorTotal() - g.valorTotal(), 1e-9,
+                    "greedy pierde 15: gasta 4kg de capacidad en I2 (Palermo) y deja 3kg sin usar");
         }
     }
 
