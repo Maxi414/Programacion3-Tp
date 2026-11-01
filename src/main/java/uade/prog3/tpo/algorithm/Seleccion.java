@@ -57,13 +57,13 @@ public class Seleccion {
      * turno del escenario clasico):
      *   U2 Arqueros   (costo 3, poder  5, ratio 1.667)
      *   U6 Guardia    (costo 8, poder 13, ratio 1.625)
-     *   U4 Caballeria (costo 5, poder  8, ratio 1.600)
+     *   U4 Caballería (costo 5, poder  8, ratio 1.600)
      *   U3 Lanceros   (costo 4, poder  6, ratio 1.500)
      *   U5 Catapulta  (costo 6, poder  9, ratio 1.500)
      *   U1 Milicia    (costo 1, poder  1, ratio 1.000)
      * Greedy toma Arqueros (3 de oro), despues ya no entra nada hasta la
      * Milicia: gasta 4, poder 6, y le sobran 2 de oro.
-     * El optimo real vale 9 y gasta los 6: la PD devuelve Milicia + Caballeria
+     * El optimo real vale 9 y gasta los 6: la PD devuelve Milicia + Caballería
      * (la Catapulta sola empata en 9). Greedy pierde 3 de poder (un tercio)
      * porque la mejor unidad "por moneda" bloquea la compra que aprovecha todo
      * el presupuesto.

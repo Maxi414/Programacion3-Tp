@@ -6,6 +6,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import uade.prog3.tpo.juego.Mapa;
+import uade.prog3.tpo.model.Item;
 import uade.prog3.tpo.model.Nodo;
 import uade.prog3.tpo.repository.ItemRepository;
 import uade.prog3.tpo.repository.NodoRepository;
@@ -81,11 +82,30 @@ public class CargaInicial implements CommandLineRunner {
         log.info("Para desactivarla: app.seed.enabled=false");
     }
 
+    /**
+     * El mapa esta cargado si estan los 12 territorios con el mismo nombre y
+     * terreno que en MapaInicial, y las 6 unidades del catalogo con su nombre.
+     * Si algo cambio (por ejemplo, una version anterior sin tildes en los
+     * nombres), se recarga todo.
+     */
     private boolean yaEstaCargadoElMapa() {
-        Optional<Nodo> capital = nodoRepository.findById("AZU");
-        return capital.isPresent()
-                && "CIUDAD".equals(capital.get().getTipo())
-                && nodoRepository.count() == MapaInicial.TERRITORIOS.size()
-                && itemRepository.findById("U6").isPresent();
+        if (nodoRepository.count() != MapaInicial.TERRITORIOS.size()
+                || itemRepository.count() != MapaInicial.catalogo().size()) {
+            return false;
+        }
+        for (Item u : MapaInicial.catalogo()) {
+            Optional<Item> guardada = itemRepository.findById(u.getId());
+            if (guardada.isEmpty() || !u.getNombre().equals(guardada.get().getNombre())) {
+                return false;
+            }
+        }
+        for (Mapa.Territorio t : MapaInicial.TERRITORIOS) {
+            Optional<Nodo> n = nodoRepository.findById(t.id());
+            if (n.isEmpty() || !t.nombre().equals(n.get().getNombre())
+                    || !t.terreno().name().equals(n.get().getTipo())) {
+                return false;
+            }
+        }
+        return true;
     }
 }

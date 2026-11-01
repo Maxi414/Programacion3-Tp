@@ -76,6 +76,8 @@ main {
 .costo { font-size: 15px; font-weight: 700; fill: #5b5141; text-anchor: middle; dominant-baseline: central; }
 
 .territorio { cursor: pointer; }
+/* el halo solo se ve al seleccionar o resaltar; sin esto SVG lo rellena de negro */
+.territorio circle.halo { fill: none; stroke: none; }
 .territorio circle.cuerpo { stroke: #2b2a26; stroke-width: 2; }
 .territorio.AZUL circle.cuerpo { fill: var(--azul); }
 .territorio.ROJO circle.cuerpo { fill: var(--rojo); }
@@ -88,6 +90,8 @@ main {
 .tropas { font-size: 24px; font-weight: 800; fill: #fff; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .nombre { font-size: 14px; font-weight: 600; fill: var(--tinta); text-anchor: middle; pointer-events: none; }
 .detalle { font-size: 12px; fill: var(--tenue); text-anchor: middle; pointer-events: none; }
+/* contorno del color del papel: las rutas pasan por debajo sin tachar los nombres */
+.nombre, .detalle, .corona { paint-order: stroke; stroke: var(--papel); stroke-width: 5px; stroke-linejoin: round; }
 .corona { font-size: 20px; fill: var(--oro); text-anchor: middle; pointer-events: none; }
 .insignia circle { fill: #111; }
 .insignia text { fill: #fff; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
@@ -154,7 +158,7 @@ main {
 .resultado { margin-top: 10px; font-size: .85rem; max-height: 340px; overflow: auto; }
 .resultado table { border-collapse: collapse; width: 100%; }
 .resultado td, .resultado th { border-bottom: 1px solid #eee; padding: 3px 4px; text-align: left; }
-.resultado code { background: #f3f3f3; padding: 0 3px; border-radius: 3px; }
+.resultado code { background: #f3f3f3; padding: 0 3px; border-radius: 3px; word-break: break-all; }
 .clicable { cursor: pointer; }
 .clicable:hover { background: #fbf6e6; }
 

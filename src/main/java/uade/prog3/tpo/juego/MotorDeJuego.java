@@ -223,7 +223,7 @@ public class MotorDeJuego {
     public List<Item> comprar(Mapa mapa, Estado e, List<Compra> compras) {
         validarEnJuego(e);
         if (e.fase != Fase.RECLUTAMIENTO) {
-            throw new IllegalStateException("Ya paso la fase de reclutamiento de este turno.");
+            throw new IllegalStateException("Ya pasó la fase de reclutamiento de este turno.");
         }
         if (compras.isEmpty()) {
             return List.of();
@@ -237,7 +237,7 @@ public class MotorDeJuego {
             Item u = mapa.unidad(c.unidad());
             if (!vistas.add(u.getId())) {
                 throw new IllegalArgumentException("El mercado ofrece una sola unidad de cada tipo por turno: "
-                        + u.getNombre() + " esta repetida.");
+                        + u.getNombre() + " está repetida.");
             }
             int d = mapa.indice(c.destino());
             if (e.duenio[d] != j) {
@@ -245,7 +245,7 @@ public class MotorDeJuego {
             }
             if (!ab.abastecido(d)) {
                 throw new IllegalArgumentException(mapa.territorio(d).nombre()
-                        + " esta aislado de la capital: no puede recibir refuerzos.");
+                        + " está aislado de la capital: no puede recibir refuerzos.");
             }
             costo += (int) u.getPeso();
             compradas.add(u);
@@ -284,7 +284,7 @@ public class MotorDeJuego {
     public CaminosMinimos.Camino marchar(Mapa mapa, Estado e, Movimiento m) {
         validarEnJuego(e);
         if (e.fase.ordinal() > Fase.MARCHA.ordinal()) {
-            throw new IllegalStateException("Ya paso la fase de marcha de este turno.");
+            throw new IllegalStateException("Ya pasó la fase de marcha de este turno.");
         }
         int o = mapa.indice(m.origen());
         int d = mapa.indice(m.destino());
@@ -295,7 +295,7 @@ public class MotorDeJuego {
         CaminosMinimos.Camino camino = rutaDeMarcha(mapa, e, m.origen(), m.destino());
         if (camino.costoTotal() > PUNTOS_DE_MARCHA) {
             throw new IllegalArgumentException("La marcha " + m.origen() + "->" + m.destino() + " cuesta "
-                    + (int) camino.costoTotal() + " dias y el limite por turno es " + PUNTOS_DE_MARCHA + ".");
+                    + (int) camino.costoTotal() + " días y el límite por turno es " + PUNTOS_DE_MARCHA + ".");
         }
         e.tropas[o] -= m.tropas();
         e.tropas[d] += m.tropas();
@@ -334,7 +334,7 @@ public class MotorDeJuego {
         }
         if (!mapa.sonAdyacentes(o, d)) {
             throw new IllegalArgumentException("Solo se puede atacar un territorio vecino: "
-                    + m.origen() + " y " + m.destino() + " no estan conectados por una ruta.");
+                    + m.origen() + " y " + m.destino() + " no están conectados por una ruta.");
         }
         validarTropas(e, o, m.tropas());
 
@@ -436,7 +436,7 @@ public class MotorDeJuego {
 
     private void validarEnJuego(Estado e) {
         if (e.terminada()) {
-            throw new IllegalStateException("La partida ya termino: gano " + Estado.nombreJugador(e.ganador) + ".");
+            throw new IllegalStateException("La partida ya terminó: ganó " + Estado.nombreJugador(e.ganador) + ".");
         }
     }
 

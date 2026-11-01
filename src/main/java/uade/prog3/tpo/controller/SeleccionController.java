@@ -118,7 +118,7 @@ public class SeleccionController {
             case "peso", "costo" -> Comparator.comparingDouble(Item::getPeso);
             case "ratio" -> Comparator.comparingDouble(Item::ratioValorPeso);
             default -> throw new IllegalArgumentException(
-                    "Criterio invalido: " + criterio + ". Use poder, costo o ratio.");
+                    "Criterio inválido: " + criterio + ". Use poder, costo o ratio.");
         };
     }
 }

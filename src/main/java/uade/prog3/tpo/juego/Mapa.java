@@ -59,7 +59,7 @@ public final class Mapa {
     public static Mapa construir(List<Territorio> territorios, List<Ruta> rutas, List<Item> catalogo,
                                  CaminosMinimos caminos, Ordenamiento ordenamiento) {
         if (territorios.isEmpty()) {
-            throw new IllegalStateException("El mapa no tiene territorios. ¿Esta cargada la base?");
+            throw new IllegalStateException("El mapa no tiene territorios. ¿Está cargada la base?");
         }
         Grafo g = new Grafo(false);
         for (Territorio t : territorios) {
@@ -68,7 +68,7 @@ public final class Mapa {
         for (Ruta r : rutas) {
             if (r.costo() <= 0) {
                 throw new IllegalStateException("La ruta " + r.origen() + "-" + r.destino()
-                        + " tiene costo " + r.costo() + ": los dias de marcha tienen que ser positivos.");
+                        + " tiene costo " + r.costo() + ": los días de marcha tienen que ser positivos.");
             }
             g.agregarArista(r.origen(), r.destino(), r.costo());
         }

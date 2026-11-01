@@ -8,6 +8,6 @@ package uade.prog3.tpo.algorithm;
 public class PendienteDeImplementar extends RuntimeException {
 
     public PendienteDeImplementar(String algoritmo) {
-        super("Todavia no esta implementado: " + algoritmo);
+        super("Todavía no está implementado: " + algoritmo);
     }
 }

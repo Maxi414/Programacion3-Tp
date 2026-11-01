@@ -83,7 +83,7 @@ public class Estratega {
     public ComparacionIa comparar(Mapa mapa, Estado e, int profundidad) {
         validarInicioDeTurno(e);
         if (profundidad < 1 || profundidad > 4) {
-            throw new IllegalArgumentException("La profundidad del analisis va de 1 a 4 (MIN-MAX puro crece como b^d).");
+            throw new IllegalArgumentException("La profundidad del análisis va de 1 a 4 (MIN-MAX puro crece como b^d).");
         }
         IaConquista juego = ia(mapa, e.jugadorActual());
         int raiz = juego.jugadas(e).size();
@@ -105,11 +105,11 @@ public class Estratega {
 
     private void validarInicioDeTurno(Estado e) {
         if (e.terminada()) {
-            throw new IllegalStateException("La partida ya termino.");
+            throw new IllegalStateException("La partida ya terminó.");
         }
         if (e.fase() != Fase.RECLUTAMIENTO) {
             throw new IllegalStateException(
-                    "La IA planea turnos completos: pedi el analisis al principio del turno, antes de comprar o mover.");
+                    "La IA planea turnos completos: pedí el análisis al principio del turno, antes de comprar o mover.");
         }
     }
 

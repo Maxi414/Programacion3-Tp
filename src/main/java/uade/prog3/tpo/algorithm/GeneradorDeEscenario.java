@@ -149,7 +149,7 @@ public class GeneradorDeEscenario {
         }
         throw new IllegalStateException("No existe un escenario que cumpla las restricciones: "
                 + "regiones de " + tamanioRegion + ", capitales a " + distanciaMinima
-                + " dias o mas y diferencia de produccion <= " + tolerancia + ".");
+                + " días o más y diferencia de producción <= " + tolerancia + ".");
     }
 
     private boolean crecer(Busqueda b, int jugador) {

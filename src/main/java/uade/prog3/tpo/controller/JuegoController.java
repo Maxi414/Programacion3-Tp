@@ -167,7 +167,7 @@ public class JuegoController {
         try {
             return Dificultad.valueOf(texto.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Dificultad invalida: " + texto + ". Use FACIL, NORMAL o DIFICIL.");
+            throw new IllegalArgumentException("Dificultad inválida: " + texto + ". Use FACIL, NORMAL o DIFICIL.");
         }
     }
 
@@ -175,7 +175,7 @@ public class JuegoController {
         return switch (escenario.toUpperCase()) {
             case "CLASICO" -> false;
             case "ALEATORIO" -> true;
-            default -> throw new IllegalArgumentException("Escenario invalido: " + escenario + ". Use CLASICO o ALEATORIO.");
+            default -> throw new IllegalArgumentException("Escenario inválido: " + escenario + ". Use CLASICO o ALEATORIO.");
         };
     }
 }

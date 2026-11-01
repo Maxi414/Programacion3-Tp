@@ -224,7 +224,7 @@ public class JuegoService {
     public Partida partida(String id) {
         Partida p = partidas.get(id);
         if (p == null) {
-            throw new IllegalArgumentException("No existe la partida " + id + ". Crea una nueva con POST /api/juego.");
+            throw new IllegalArgumentException("No existe la partida " + id + ". Creá una nueva con POST /api/juego.");
         }
         return p;
     }
@@ -322,7 +322,7 @@ public class JuegoService {
     private void validarTurnoHumano(Partida p) {
         Estado e = p.estado();
         if (e.terminada()) {
-            throw new IllegalStateException("La partida termino: gano " + Estado.nombreJugador(e.ganador()) + ".");
+            throw new IllegalStateException("La partida terminó: ganó " + Estado.nombreJugador(e.ganador()) + ".");
         }
         if (e.jugadorActual() != Estado.AZUL) {
             throw new IllegalStateException("No es tu turno.");
@@ -498,7 +498,7 @@ public class JuegoService {
                 }
             }
             if (frentes.isEmpty()) {
-                throw new IllegalStateException("No tenes frentes abastecidos para reforzar.");
+                throw new IllegalStateException("No tenés frentes abastecidos para reforzar.");
             }
             List<Item> unidades = motor.compraOptima(mapa, e.oro(j)).elegidos();
             RamificacionYPoda.Reparto reparto = ramificacionYPoda.repartir(unidades, frentes);
@@ -549,7 +549,7 @@ public class JuegoService {
                     }
                     return ordenamiento.mergeSort(filas, (a, b) -> Double.compare(b.puntaje(), a.puntaje()));
                 }
-                default -> throw new IllegalArgumentException("Criterio invalido: " + criterio + ". Use valor o amenaza.");
+                default -> throw new IllegalArgumentException("Criterio inválido: " + criterio + ". Use valor o amenaza.");
             }
         }
     }
@@ -579,7 +579,7 @@ public class JuegoService {
             texto = p.replay();
         }
         if (texto.isEmpty()) {
-            throw new IllegalStateException("Todavia no termino ningun turno: no hay replay para comprimir.");
+            throw new IllegalStateException("Todavía no terminó ningún turno: no hay replay para comprimir.");
         }
         Huffman.Compresion c = huffman.comprimir(texto);
         boolean igual = huffman.descomprimir(c.bits(), c.arbol()).equals(texto);
@@ -618,7 +618,7 @@ public class JuegoService {
         String aislados = ab.aislados().isEmpty() ? ""
                 : " ¡" + ab.aislados().size() + " territorio(s) aislado(s) de la capital: " + ab.aislados() + "!";
         p.registrar("— Ronda " + p.estado().ronda() + ", turno de " + Estado.nombreJugador(jugador) + ": cobra "
-                + ab.ingresoNeto() + " de oro (produccion " + ab.produccion() + " - mantenimiento de la red "
+                + ab.ingresoNeto() + " de oro (producción " + ab.produccion() + " - mantenimiento de la red "
                 + ab.mantenimiento() + "). Tesoro: " + p.estado().oro(jugador) + "." + aislados);
     }
 
@@ -642,7 +642,7 @@ public class JuegoService {
     private void registrarMarcha(Partida p, String quien, Movimiento m, CaminosMinimos.Camino c) {
         p.registrarAccion("M" + m.origen() + ">" + m.destino() + "x" + m.tropas());
         p.registrar(quien + " marcha con " + m.tropas() + " tropas por " + String.join("→", c.vertices())
-                + " (" + (int) c.costoTotal() + " dias).");
+                + " (" + (int) c.costoTotal() + " días).");
     }
 
     private void registrarAtaque(Partida p, String quien, ResultadoAtaque r) {
@@ -652,14 +652,14 @@ public class JuegoService {
                 + (r.conquistado() ? "¡CONQUISTADO! Quedan " + r.tropasQueQuedan() + " tropas."
                 : "rechazado. El defensor queda con " + r.tropasQueQuedan() + ".");
         if (r.capitalCapturada()) {
-            texto += " Cayo la capital: ¡gana " + quien + "!";
+            texto += " Cayó la capital: ¡gana " + quien + "!";
         }
         p.registrar(texto);
     }
 
     private void registrarFinPorRondas(Partida p) {
         Estado e = p.estado();
-        p.registrar("Se llego al limite de " + MotorDeJuego.LIMITE_RONDAS + " rondas. Puntaje AZUL "
+        p.registrar("Se llegó al límite de " + MotorDeJuego.LIMITE_RONDAS + " rondas. Puntaje AZUL "
                 + motor.puntaje(p.mapa(), e, Estado.AZUL) + ", ROJO " + motor.puntaje(p.mapa(), e, Estado.ROJO)
                 + ": " + (e.ganador() == Estado.EMPATE ? "empate." : "gana " + Estado.nombreJugador(e.ganador()) + "."));
     }

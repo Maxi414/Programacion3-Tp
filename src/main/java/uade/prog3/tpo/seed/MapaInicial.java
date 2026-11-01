@@ -30,15 +30,15 @@ public final class MapaInicial {
     public static final List<Mapa.Territorio> TERRITORIOS = List.of(
             new Mapa.Territorio("AZU", "Aguazul",         Terreno.CIUDAD,  3, 110, 110),
             new Mapa.Territorio("BRA", "Brasaroja",       Terreno.CIUDAD,  3, 890, 590),
-            new Mapa.Territorio("CON", "Paso del Condor", Terreno.MONTANA, 1, 420, 320),
+            new Mapa.Territorio("CON", "Paso del Cóndor", Terreno.MONTANA, 1, 420, 320),
             new Mapa.Territorio("COR", "Puerto Coral",    Terreno.CIUDAD,  3, 380, 600),
             new Mapa.Territorio("DOR", "Llano Dorado",    Terreno.LLANURA, 2, 810, 350),
-            new Mapa.Territorio("EBA", "Ruinas de Ebano", Terreno.BOSQUE,  2, 590, 380),
+            new Mapa.Territorio("EBA", "Ruinas de Ébano", Terreno.BOSQUE,  2, 590, 380),
             new Mapa.Territorio("HEL", "Picos Helados",   Terreno.MONTANA, 1, 880, 130),
-            new Mapa.Territorio("IGN", "Cumbres Igneas",  Terreno.MONTANA, 1, 120, 570),
+            new Mapa.Territorio("IGN", "Cumbres Ígneas",  Terreno.MONTANA, 1, 120, 570),
             new Mapa.Territorio("NIE", "Puerto Niebla",   Terreno.CIUDAD,  3, 620, 100),
             new Mapa.Territorio("PIN", "Pinar Hondo",     Terreno.BOSQUE,  2, 360,  90),
-            new Mapa.Territorio("SEL", "Selva Ambar",     Terreno.BOSQUE,  2, 640, 610),
+            new Mapa.Territorio("SEL", "Selva Ámbar",     Terreno.BOSQUE,  2, 640, 610),
             new Mapa.Territorio("VAD", "Vado Real",       Terreno.LLANURA, 2, 190, 350));
 
     /**
@@ -76,7 +76,7 @@ public final class MapaInicial {
      * Calibrado para que greedy por ratio poder/costo NO sea optimo en varios
      * presupuestos. Con 6 de oro (el primer turno del escenario clasico)
      * greedy compra Arqueros + Milicia = 6 de poder y la mochila compra
-     * Milicia + Caballeria = 9. Con 10 de oro: greedy 14, mochila 15. Con 14:
+     * Milicia + Caballería = 9. Con 10 de oro: greedy 14, mochila 15. Con 14:
      * 19 contra 22.
      */
     public static List<Item> catalogo() {
@@ -84,7 +84,7 @@ public final class MapaInicial {
                 new Item("U1", "Milicia",    1,  1, null),
                 new Item("U2", "Arqueros",   3,  5, null),
                 new Item("U3", "Lanceros",   4,  6, null),
-                new Item("U4", "Caballeria", 5,  8, null),
+                new Item("U4", "Caballería", 5,  8, null),
                 new Item("U5", "Catapulta",  6,  9, null),
                 new Item("U6", "Guardia",    8, 13, null));
     }

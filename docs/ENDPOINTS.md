@@ -389,7 +389,7 @@ Mochila 0/1 con programación dinámica y recuperación de la solución.
 
 **Respuesta:**
 ```json
-{ "elegidos": [ {"id":"U1",...}, {"id":"U4","nombre":"Caballeria","peso":5.0,"valor":8.0} ],
+{ "elegidos": [ {"id":"U1",...}, {"id":"U4","nombre":"Caballería","peso":5.0,"valor":8.0} ],
   "valorTotal": 9.0, "pesoTotal": 6.0, "tecnica": "PROGRAMACION DINAMICA (mochila 0/1)" }
 ```
 
@@ -616,7 +616,7 @@ territorios propios **abastecidos**.
 
 **Cuerpo:** `{"compras":[{"unidad":"U1","destino":"VAD"},{"unidad":"U4","destino":"VAD"}]}`
 
-**Respuesta:** la vista; en `eventos`: `"AZUL recluta Milicia en VAD, Caballeria en VAD (costo 6, poder +9)."`
+**Respuesta:** la vista; en `eventos`: `"AZUL recluta Milicia en VAD, Caballería en VAD (costo 6, poder +9)."`
 
 **Errores:** unidad repetida, oro insuficiente, destino ajeno o aislado → `400`;
 fase ya pasada → `422`.
@@ -716,9 +716,9 @@ completo; después AZUL cobra el suyo.
 
 **Respuesta:**
 ```json
-[ {"origen":"VAD","destino":"CON","nombreDestino":"Paso del Condor","tropasDisponibles":11,
+[ {"origen":"VAD","destino":"CON","nombreDestino":"Paso del Cóndor","tropasDisponibles":11,
    "defensa":4,"ganancia":2.0,"riesgo":5.0,"ratio":0.4},
-  {"origen":"VAD","destino":"IGN","nombreDestino":"Cumbres Igneas","tropasDisponibles":11,
+  {"origen":"VAD","destino":"IGN","nombreDestino":"Cumbres Ígneas","tropasDisponibles":11,
    "defensa":4,"ganancia":2.0,"riesgo":5.0,"ratio":0.4} ]
 ```
 
