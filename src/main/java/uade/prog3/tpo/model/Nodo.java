@@ -10,14 +10,16 @@ import java.util.List;
 import static org.springframework.data.neo4j.core.schema.Relationship.Direction.OUTGOING;
 
 /**
- * Vertice generico del grafo.
+ * Vertice del grafo: en este trabajo, un TERRITORIO del mapa del juego.
  *
- * ESTE ES EL PUNTO QUE CADA GRUPO DEBE ADAPTAR A SU DOMINIO.
+ *   - tipo  = terreno: "LLANURA" | "BOSQUE" | "CIUDAD" | "MONTANA"
+ *             (define el bonus de defensa; solo las ciudades pueden ser capital)
+ *   - valor = produccion: oro que rinde el territorio por turno si esta abastecido
+ *   - x, y  = posicion en el dibujo del mapa (0..1000 x 0..700). No la usa
+ *             ningun algoritmo: es solo para la interfaz.
  *
- * Ejemplos de especializacion:
- *   - Red logistica  -> Nodo = deposito o punto de entrega;  tipo = "DEPOSITO" | "CLIENTE"
- *   - Transporte     -> Nodo = estacion;                     tipo = "SUBTE" | "TREN"
- *   - Red social     -> Nodo = usuario;                      tipo = "PERSONA" | "ORGANIZACION"
+ * Las conexiones (relacion CONECTA) son las rutas entre territorios y su
+ * costo son los DIAS DE MARCHA para cruzarla.
  *
  * Lo unico que NO se debe romper es que exista una relacion con COSTO NUMERICO
  * entre nodos: sin peso en las aristas no se pueden implementar Dijkstra,
@@ -41,6 +43,10 @@ public class Nodo {
      */
     private double valor;
 
+    /** Posicion en el dibujo del mapa. Solo para la interfaz. */
+    private double x;
+    private double y;
+
     @Relationship(type = "CONECTA", direction = OUTGOING)
     private List<Conexion> conexiones = new ArrayList<>();
 
@@ -52,6 +58,12 @@ public class Nodo {
         this.nombre = nombre;
         this.tipo = tipo;
         this.valor = valor;
+    }
+
+    public Nodo(String id, String nombre, String tipo, double valor, double x, double y) {
+        this(id, nombre, tipo, valor);
+        this.x = x;
+        this.y = y;
     }
 
     public void conectar(Nodo destino, double costo) {
@@ -69,6 +81,12 @@ public class Nodo {
 
     public double getValor() { return valor; }
     public void setValor(double valor) { this.valor = valor; }
+
+    public double getX() { return x; }
+    public void setX(double x) { this.x = x; }
+
+    public double getY() { return y; }
+    public void setY(double y) { this.y = y; }
 
     public List<Conexion> getConexiones() { return conexiones; }
     public void setConexiones(List<Conexion> conexiones) { this.conexiones = conexiones; }

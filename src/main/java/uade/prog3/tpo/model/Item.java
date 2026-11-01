@@ -7,11 +7,12 @@ import org.springframework.data.neo4j.core.schema.Node;
  * Entidad auxiliar con un par (peso, valor).
  *
  * Existe para dar soporte a los problemas de seleccion bajo restriccion:
- * mochila fraccional con greedy, mochila 0/1 con programacion dinamica,
- * y seleccion optima con Branch and Bound.
+ * greedy, mochila 0/1 con programacion dinamica y reparto con Branch and Bound.
  *
- * Cada grupo la renombra segun su dominio: paquete a cargar en un camion,
- * producto a stockear, tarea a asignar, inversion a realizar.
+ * EN EL JUEGO un Item es una UNIDAD del catalogo del mercado:
+ *   - peso  = COSTO en oro (lo que consume del presupuesto del turno)
+ *   - valor = PODER de combate (las tropas que suma al territorio donde se ubica)
+ *   - nodoId no se usa (las unidades no pertenecen a un territorio)
  */
 @Node("Item")
 public class Item {

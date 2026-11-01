@@ -11,6 +11,15 @@ import java.util.List;
  *
  * Enumerar caminos simples bajo restricciones. Es DFS con dos agregados:
  * un criterio de viabilidad que poda ramas, y el DESHACER al retroceder.
+ *
+ * USO EN EL JUEGO: RUTAS DE INVASION. "Que caminos tengo desde mi capital
+ * hasta la capital enemiga que no tarden mas de X dias de marcha ni crucen mas
+ * de Y territorios". Dijkstra da UNA ruta (la mas barata); el backtracking da
+ * TODAS las alternativas, que es lo que sirve para planear un ataque por un
+ * flanco que el rival no esta defendiendo.
+ *
+ * (El otro backtracking del trabajo, el de tipo 1, arma el escenario inicial:
+ * ver GeneradorDeEscenario.)
  */
 @Component
 public class Backtracking {

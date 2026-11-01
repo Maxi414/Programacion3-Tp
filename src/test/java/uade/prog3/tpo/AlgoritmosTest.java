@@ -4,7 +4,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import uade.prog3.tpo.algorithm.*;
+import uade.prog3.tpo.juego.Mapa;
 import uade.prog3.tpo.model.Item;
+import uade.prog3.tpo.seed.MapaInicial;
 import uade.prog3.tpo.service.Grafo;
 
 import java.util.ArrayList;
@@ -12,20 +14,40 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Un test por cada algoritmo implementado (requisito del hito 9).
+ * Un test (o varios) por cada algoritmo implementado (requisito del hito 9).
  *
  * NO tocan Neo4j: son unitarios sobre el grafo en memoria y corren en
- * milisegundos. Los valores esperados son los que la guia de la materia da
- * calculados a mano sobre el grafo de ejemplo.
+ * milisegundos. El mapa se arma con los MISMOS datos que CargaInicial guarda
+ * en la base (MapaInicial), asi que lo que se verifica es el dominio real.
+ * Los valores esperados estan calculados a mano en el README.
  */
 class AlgoritmosTest {
 
-    /** El mismo grafo de 8 vertices y 12 aristas que carga CargaInicial. */
-    private Grafo semilla(boolean dirigido) {
+    /** El mapa del juego: 12 territorios y 17 rutas, no dirigido. */
+    static Grafo mapa() {
+        Grafo g = new Grafo(false);
+        for (Mapa.Territorio t : MapaInicial.TERRITORIOS) {
+            g.agregarVertice(t.id());
+        }
+        for (Mapa.Ruta r : MapaInicial.RUTAS) {
+            g.agregarArista(r.origen(), r.destino(), r.costo());
+        }
+        return g;
+    }
+
+    /** El catalogo del mercado: peso = costo en oro, valor = poder. */
+    static List<Item> catalogo() {
+        return MapaInicial.catalogo();
+    }
+
+    /** La semilla A..H del scaffold, con los valores de verificacion de GUIA-TPO.md. */
+    static Grafo semilla(boolean dirigido) {
         Grafo g = new Grafo(dirigido);
         for (String id : List.of("A", "B", "C", "D", "E", "F", "G", "H")) {
             g.agregarVertice(id);
@@ -39,17 +61,7 @@ class AlgoritmosTest {
         return g;
     }
 
-    /** Los mismos items que carga CargaInicial. */
-    private List<Item> items() {
-        return List.of(
-                new Item("I1", "Item 1", 5, 10, "A"),
-                new Item("I2", "Item 2", 4, 40, "B"),
-                new Item("I3", "Item 3", 6, 30, "C"),
-                new Item("I4", "Item 4", 3, 50, "D"),
-                new Item("I5", "Item 5", 7, 55, "E"));
-    }
-
-    private List<String> ids(List<Item> lista) {
+    static List<String> ids(List<Item> lista) {
         List<String> r = new ArrayList<>();
         for (Item i : lista) {
             r.add(i.getId());
@@ -57,96 +69,97 @@ class AlgoritmosTest {
         return r;
     }
 
-    /**
-     * El grafo del dominio propio (red logistica de ultima milla), el mismo
-     * que carga CargaInicial en Neo4j desde el hito 4. Nodos = deposito y
-     * puntos de entrega, costo de arista = distancia en km.
-     */
-    private Grafo dominio() {
-        Grafo g = new Grafo(false);
-        g.agregarArista("CD", "PA", 5);
-        g.agregarArista("CD", "BE", 12);
-        g.agregarArista("PA", "BE", 4);
-        g.agregarArista("PA", "RE", 8);
-        g.agregarArista("BE", "RE", 3);
-        g.agregarArista("BE", "AL", 10);
-        g.agregarArista("RE", "AL", 6);
-        g.agregarArista("RE", "BO", 9);
-        g.agregarArista("AL", "BO", 7);
-        g.agregarArista("AL", "FL", 11);
-        g.agregarArista("BO", "CB", 4);
-        g.agregarArista("FL", "CB", 5);
-        return g;
-    }
-
-    /** Los mismos paquetes que carga CargaInicial sobre el dominio propio. */
-    private List<Item> paquetesDominio() {
-        return List.of(
-                new Item("I1", "Paquete 1", 5, 10, "CD"),
-                new Item("I2", "Paquete 2", 4, 40, "PA"),
-                new Item("I3", "Paquete 3", 6, 30, "BE"),
-                new Item("I4", "Paquete 4", 3, 50, "RE"),
-                new Item("I5", "Paquete 5", 7, 55, "AL"));
-    }
-
     // ------------------------------------------------------------------
     @Nested
-    @DisplayName("Recorridos - 2 puntos")
+    @DisplayName("Hito 4 - BFS y DFS sobre el mapa")
     class RecorridosTest {
 
         private final Recorridos recorridos = new Recorridos();
 
         @Test
-        void dfsVisitaTodosLosAlcanzablesEnProfundidad() {
-            assertEquals(List.of("A", "B", "C", "D", "E", "F", "H", "G"),
-                    recorridos.dfs(semilla(true), "A"));
+        void bfsDesdeAguazulVisitaPorNiveles() {
+            // nivel 0: AZU | 1: PIN VAD | 2: CON NIE IGN | 3: COR EBA HEL | 4: SEL DOR | 5: BRA
+            assertEquals(List.of("AZU", "PIN", "VAD", "CON", "NIE", "IGN", "COR", "EBA", "HEL", "SEL", "DOR", "BRA"),
+                    recorridos.bfs(mapa(), "AZU"));
+        }
+
+        @Test
+        void dfsDesdeAguazulVaEnProfundidad() {
+            assertEquals(List.of("AZU", "PIN", "CON", "COR", "IGN", "VAD", "SEL", "BRA", "DOR", "EBA", "NIE", "HEL"),
+                    recorridos.dfs(mapa(), "AZU"));
         }
 
         @Test
         void dfsIterativoDaElMismoOrdenQueElRecursivo() {
-            Grafo g = semilla(true);
-            assertEquals(recorridos.dfs(g, "A"), recorridos.dfsIterativo(g, "A"));
-        }
-
-        @Test
-        void bfsVisitaPorNiveles() {
-            assertEquals(List.of("A", "B", "C", "D", "E", "F", "G", "H"),
-                    recorridos.bfs(semilla(true), "A"));
+            assertEquals(recorridos.dfs(mapa(), "AZU"), recorridos.dfsIterativo(mapa(), "AZU"));
         }
 
         @Test
         void bfsNoRepiteVerticesAunqueHayaCiclos() {
-            List<String> orden = recorridos.bfs(semilla(false), "A");
-            assertEquals(new HashSet<>(orden).size(), orden.size(),
-                    "marcar al encolar evita que un vertice entre dos veces");
+            List<String> orden = recorridos.bfs(mapa(), "EBA");
+            assertEquals(12, orden.size());
+            assertEquals(new HashSet<>(orden).size(), orden.size(), "marcar al encolar evita duplicados");
+        }
+
+        @Test
+        void bfsPorNivelesDaLosTurnosParaLlegarDesdeLaRegionAzul() {
+            Map<String, Integer> niveles = recorridos.bfsPorNiveles(mapa(), List.of("AZU", "PIN", "VAD"), 2);
+            assertEquals(Map.of("AZU", 0, "PIN", 0, "VAD", 0, "CON", 1, "NIE", 1, "IGN", 1,
+                    "COR", 2, "EBA", 2, "HEL", 2), niveles);
+            assertFalse(niveles.containsKey("BRA"), "BRA esta a mas de 2 conquistas");
+        }
+
+        @Test
+        void componentesConexasDetectaUnImperioPartido() {
+            assertEquals(1, recorridos.componentesConexas(mapa()).size(), "el mapa completo es conexo");
+            // imperio con AZU-VAD de un lado y NIE-HEL del otro: dos componentes
+            Grafo imperio = new Grafo(false);
+            imperio.agregarArista("AZU", "VAD", 2);
+            imperio.agregarArista("NIE", "HEL", 5);
+            List<List<String>> comps = recorridos.componentesConexas(imperio);
+            assertEquals(List.of(List.of("AZU", "VAD"), List.of("NIE", "HEL")), comps);
         }
 
         @Test
         void origenInexistenteFallaConMensajeClaro() {
-            assertThrows(IllegalArgumentException.class,
-                    () -> recorridos.bfs(semilla(true), "Z"));
+            assertThrows(IllegalArgumentException.class, () -> recorridos.bfs(mapa(), "XXX"));
         }
     }
 
     // ------------------------------------------------------------------
     @Nested
-    @DisplayName("Caminos minimos - Dijkstra y Floyd")
-    class CaminosMinimosTest {
+    @DisplayName("Hito 5 - Dijkstra, Prim y Kruskal verificados a mano sobre el mapa")
+    class Hito5Test {
 
         private final CaminosMinimos caminos = new CaminosMinimos();
+        private final ArbolRecubrimiento arbol = new ArbolRecubrimiento();
 
         @Test
-        void dijkstraEligeElCaminoBaratoYNoElDirecto() {
-            var c = caminos.dijkstra(semilla(true), "A", "C");
-            assertEquals(7.0, c.costoTotal(), 1e-9, "A->B->C cuesta 7; el directo A->C cuesta 9");
-            assertEquals(List.of("A", "B", "C"), c.vertices());
+        void dijkstraBordeaElPasoDeMontanaEnLugarDeCruzarlo() {
+            // PIN-CON directo cuesta 10; PIN-AZU-VAD-CON cuesta 3+2+4 = 9
+            var c = caminos.dijkstra(mapa(), "PIN", "CON");
+            assertEquals(9.0, c.costoTotal(), 1e-9);
+            assertEquals(List.of("PIN", "AZU", "VAD", "CON"), c.vertices());
         }
 
         @Test
-        void dijkstraReconstruyeElCaminoCompleto() {
-            var c = caminos.dijkstra(semilla(true), "A", "H");
-            assertEquals(20.0, c.costoTotal(), 1e-9);
-            assertEquals(List.of("A", "B", "C", "D", "F", "H"), c.vertices());
+        void dijkstraDeCapitalACapitalReconstruyeElCamino() {
+            var c = caminos.dijkstra(mapa(), "AZU", "BRA");
+            assertEquals(15.0, c.costoTotal(), 1e-9);
+            assertEquals(List.of("AZU", "VAD", "CON", "EBA", "DOR", "BRA"), c.vertices());
+        }
+
+        @Test
+        void dijkstraDesdeAguazulCoincideConElCalculoAMano() {
+            Map<String, Double> esperado = Map.ofEntries(
+                    Map.entry("AZU", 0.0), Map.entry("VAD", 2.0), Map.entry("PIN", 3.0), Map.entry("CON", 6.0),
+                    Map.entry("NIE", 6.0), Map.entry("IGN", 8.0), Map.entry("EBA", 9.0), Map.entry("COR", 10.0),
+                    Map.entry("HEL", 11.0), Map.entry("DOR", 13.0), Map.entry("SEL", 13.0), Map.entry("BRA", 15.0));
+            Map<String, Double> obtenido = caminos.distanciasDesde(mapa(), "AZU");
+            assertEquals(esperado, obtenido);
+            for (var e : esperado.entrySet()) {
+                assertEquals(e.getValue(), caminos.dijkstra(mapa(), "AZU", e.getKey()).costoTotal(), 1e-9);
+            }
         }
 
         @Test
@@ -158,24 +171,87 @@ class AlgoritmosTest {
 
         @Test
         void dijkstraAvisaCuandoNoHayCamino() {
-            assertThrows(IllegalStateException.class,
-                    () -> caminos.dijkstra(semilla(true), "H", "A"));
+            Grafo g = new Grafo(false);
+            g.agregarArista("AZU", "VAD", 2);
+            g.agregarVertice("NIE");
+            assertThrows(IllegalStateException.class, () -> caminos.dijkstra(g, "AZU", "NIE"));
         }
 
         @Test
+        void primDaCosto37ConOnceRutas() {
+            var mst = arbol.prim(mapa(), "AZU");
+            assertEquals(37.0, mst.costoTotal(), 1e-9);
+            assertEquals(11, mst.aristas().size(), "V-1 aristas con V=12");
+        }
+
+        @Test
+        void kruskalDaElMismoCostoQuePrimYTocaLosDoceTerritorios() {
+            var k = arbol.kruskal(mapa());
+            assertEquals(37.0, k.costoTotal(), 1e-9);
+            assertEquals(arbol.prim(mapa(), "AZU").costoTotal(), k.costoTotal(), 1e-9);
+            Set<String> tocados = new HashSet<>();
+            for (var a : k.aristas()) {
+                tocados.add(a.origen());
+                tocados.add(a.destino());
+            }
+            assertEquals(12, tocados.size());
+            // las rutas caras (PIN-CON 10, EBA-SEL 10, DOR-HEL 6, IGN-VAD 6, EBA-NIE 4...) no entran
+            for (var a : k.aristas()) {
+                assertTrue(a.costo() <= 5, "ninguna ruta de 6 o mas entra al MST: " + a);
+            }
+        }
+
+        @Test
+        void elMstExigeGrafoNoDirigidoYConexo() {
+            assertThrows(IllegalArgumentException.class, () -> arbol.prim(semilla(true), "A"));
+            Grafo g = new Grafo(false);
+            g.agregarArista("P", "Q", 1);
+            g.agregarVertice("Z");
+            assertThrows(IllegalStateException.class, () -> arbol.kruskal(g));
+        }
+
+        @Test
+        void casosDeVerificacionDeLaGuiaSobreLaSemilla() {
+            assertEquals(7.0, caminos.dijkstra(semilla(true), "A", "C").costoTotal(), 1e-9);
+            assertEquals(20.0, caminos.dijkstra(semilla(true), "A", "H").costoTotal(), 1e-9);
+            assertEquals(27.0, arbol.prim(semilla(false), "A").costoTotal(), 1e-9);
+            assertEquals(27.0, arbol.kruskal(semilla(false)).costoTotal(), 1e-9);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    @Nested
+    @DisplayName("Hito 7 - Floyd-Warshall contra Dijkstra V veces")
+    class Hito7Test {
+
+        private final CaminosMinimos caminos = new CaminosMinimos();
+
+        @Test
         void floydCoincideConDijkstraEnTodosLosPares() {
-            Grafo g = semilla(true);
+            Grafo g = mapa();
             Map<String, Double> todos = caminos.floydWarshall(g);
-            for (String origen : g.ids()) {
-                for (String destino : g.ids()) {
-                    Double porFloyd = todos.get(origen + "->" + destino);
-                    if (porFloyd == null || origen.equals(destino)) {
-                        continue;
-                    }
-                    assertEquals(caminos.dijkstra(g, origen, destino).costoTotal(), porFloyd, 1e-9,
-                            "discrepancia en " + origen + "->" + destino);
+            assertEquals(144, todos.size(), "12 x 12 pares, todos alcanzables");
+            for (String o : g.ids()) {
+                for (String d : g.ids()) {
+                    assertEquals(caminos.dijkstra(g, o, d).costoTotal(), todos.get(o + "->" + d), 1e-9,
+                            "discrepancia en " + o + "->" + d);
                 }
             }
+        }
+
+        @Test
+        void comparacionDeTrabajoContraDijkstraVVeces() {
+            var c = caminos.compararFloydContraDijkstra(mapa());
+            assertEquals(12, c.vertices());
+            assertEquals(17, c.aristas());
+            assertEquals(1728, c.floydCombinacionesEvaluadas(), "V^3 = 12^3");
+            assertEquals(158, c.floydMejoras());
+            assertEquals(144, c.dijkstraVerticesExpandidos(), "V corridas x V vertices");
+            assertEquals(408, c.dijkstraAristasRelajadas(), "V corridas x 2E entradas de adyacencia");
+            // las inserciones dependen de como desempata el heap distancias iguales (con
+            // PriorityQueue dan 169): solo se puede asegurar expandidos <= inserciones <= expandidos + relajaciones
+            assertTrue(c.dijkstraInsercionesEnCola() >= 144 && c.dijkstraInsercionesEnCola() <= 144 + 408);
+            assertTrue(c.mismosResultados());
         }
 
         @Test
@@ -188,316 +264,569 @@ class AlgoritmosTest {
 
         @Test
         void ucsExpandeMenosVerticesQueDijkstraCompleto() {
-            Grafo g = semilla(true);
-            assertTrue(caminos.expandidosUcs(g, "A", "C") < caminos.expandidosDijkstraCompleto(g, "A"),
-                    "la parada temprana tiene que ahorrar expansiones");
+            assertTrue(caminos.expandidosUcs(mapa(), "AZU", "VAD") < caminos.expandidosDijkstraCompleto(mapa(), "AZU"));
         }
     }
 
     // ------------------------------------------------------------------
     @Nested
-    @DisplayName("Arbol de recubrimiento minimo - Prim y Kruskal")
-    class ArbolRecubrimientoTest {
-
-        private final ArbolRecubrimiento arbol = new ArbolRecubrimiento();
-
-        @Test
-        void primDaCostoTotal27ConSieteAristas() {
-            var mst = arbol.prim(semilla(false), "A");
-            assertEquals(27.0, mst.costoTotal(), 1e-9);
-            assertEquals(7, mst.aristas().size(), "V-1 aristas con V=8");
-        }
-
-        @Test
-        void kruskalDaElMismoCostoQuePrim() {
-            Grafo g = semilla(false);
-            assertEquals(arbol.prim(g, "A").costoTotal(), arbol.kruskal(g).costoTotal(), 1e-9);
-        }
-
-        @Test
-        void kruskalNoGeneraCiclos() {
-            var mst = arbol.kruskal(semilla(false));
-            assertEquals(7, mst.aristas().size());
-            HashSet<String> vistos = new HashSet<>();
-            for (var a : mst.aristas()) {
-                vistos.add(a.origen());
-                vistos.add(a.destino());
-            }
-            assertEquals(8, vistos.size(), "el MST tiene que tocar los 8 vertices");
-        }
-
-        @Test
-        void elMstExigeGrafoNoDirigido() {
-            assertThrows(IllegalArgumentException.class, () -> arbol.prim(semilla(true), "A"));
-            assertThrows(IllegalArgumentException.class, () -> arbol.kruskal(semilla(true)));
-        }
-
-        @Test
-        void grafoNoConexoFallaConMensajeClaro() {
-            Grafo g = new Grafo(false);
-            g.agregarArista("P", "Q", 1);
-            g.agregarVertice("Z"); // aislado
-            assertThrows(IllegalStateException.class, () -> arbol.kruskal(g));
-        }
-    }
-
-    // ------------------------------------------------------------------
-    @Nested
-    @DisplayName("Hito 5 - Dijkstra, Prim y Kruskal sobre el grafo del grupo")
-    class Hito5DominioTest {
-
-        private final CaminosMinimos caminos = new CaminosMinimos();
-        private final ArbolRecubrimiento arbol = new ArbolRecubrimiento();
-
-        @Test
-        void dijkstraEligeCdPaBeYNoElDirecto() {
-            // CD->BE directo cuesta 12; por CD->PA->BE cuesta 5+4=9. Calculado
-            // a mano en el README, seccion "El grafo del grupo".
-            var c = caminos.dijkstra(dominio(), "CD", "BE");
-            assertEquals(9.0, c.costoTotal(), 1e-9);
-            assertEquals(List.of("CD", "PA", "BE"), c.vertices());
-        }
-
-        @Test
-        void dijkstraDesdeCdCoincideConElCalculoAMano() {
-            Grafo g = dominio();
-            assertEquals(5.0, caminos.dijkstra(g, "CD", "PA").costoTotal(), 1e-9);
-            assertEquals(9.0, caminos.dijkstra(g, "CD", "BE").costoTotal(), 1e-9);
-            assertEquals(12.0, caminos.dijkstra(g, "CD", "RE").costoTotal(), 1e-9);
-            assertEquals(18.0, caminos.dijkstra(g, "CD", "AL").costoTotal(), 1e-9);
-            assertEquals(21.0, caminos.dijkstra(g, "CD", "BO").costoTotal(), 1e-9);
-            assertEquals(29.0, caminos.dijkstra(g, "CD", "FL").costoTotal(), 1e-9);
-            assertEquals(25.0, caminos.dijkstra(g, "CD", "CB").costoTotal(), 1e-9);
-        }
-
-        @Test
-        void primDaCostoTotal34ConLasSieteAristasDelCalculoAMano() {
-            var mst = arbol.prim(dominio(), "CD");
-            assertEquals(34.0, mst.costoTotal(), 1e-9);
-            assertEquals(7, mst.aristas().size(), "V-1 aristas con V=8");
-        }
-
-        @Test
-        void kruskalDaElMismoCostoQuePrimSobreElDominio() {
-            Grafo g = dominio();
-            assertEquals(34.0, arbol.kruskal(g).costoTotal(), 1e-9);
-            assertEquals(arbol.prim(g, "CD").costoTotal(), arbol.kruskal(g).costoTotal(), 1e-9);
-        }
-    }
-
-    // ------------------------------------------------------------------
-    @Nested
-    @DisplayName("Ordenamiento - 1 punto")
+    @DisplayName("Hito 2 - QuickSort y MergeSort (genericos)")
     class OrdenamientoTest {
 
         private final Ordenamiento ordenamiento = new Ordenamiento();
-        private final Comparator<Item> porPeso = Comparator.comparingDouble(Item::getPeso);
+        private final Comparator<Item> porCosto = Comparator.comparingDouble(Item::getPeso);
 
         @Test
-        void quickSortOrdenaPorPeso() {
-            assertEquals(List.of("I4", "I2", "I1", "I3", "I5"),
-                    ids(ordenamiento.quickSort(items(), porPeso)));
+        void quickSortOrdenaElCatalogoPorPoderDescendente() {
+            assertEquals(List.of("U6", "U5", "U4", "U3", "U2", "U1"),
+                    ids(ordenamiento.quickSort(catalogo(), (a, b) -> Double.compare(b.getValor(), a.getValor()))));
         }
 
         @Test
-        void mergeSortOrdenaIgualQueQuickSort() {
-            assertEquals(ids(ordenamiento.quickSort(items(), porPeso)),
-                    ids(ordenamiento.mergeSort(items(), porPeso)));
+        void mergeSortOrdenaPorRatioYEsEstable() {
+            // U3 y U5 tienen el mismo ratio (1.5): salen en el orden de entrada
+            assertEquals(List.of("U1", "U3", "U5", "U4", "U6", "U2"),
+                    ids(ordenamiento.mergeSort(catalogo(), Comparator.comparingDouble(Item::ratioValorPeso))));
         }
 
         @Test
-        void ningunoModificaLaListaDeEntrada() {
-            List<Item> original = items();
-            ordenamiento.quickSort(original, porPeso);
-            ordenamiento.mergeSort(original, porPeso);
-            assertEquals(List.of("I1", "I2", "I3", "I4", "I5"), ids(original));
+        void quickSortYMergeSortCoincidenSobreDatosAleatorios() {
+            Random rnd = new Random(7);
+            List<Integer> datos = new ArrayList<>();
+            for (int i = 0; i < 500; i++) {
+                datos.add(rnd.nextInt(1000));
+            }
+            List<Integer> q = ordenamiento.quickSort(datos, Integer::compare);
+            assertEquals(q, ordenamiento.mergeSort(datos, Integer::compare));
+            for (int i = 1; i < q.size(); i++) {
+                assertTrue(q.get(i - 1) <= q.get(i));
+            }
         }
 
         @Test
-        void mergeSortEsEstable() {
-            // tres items con el mismo peso: tienen que salir en el orden de entrada
-            List<Item> empatados = List.of(
-                    new Item("X1", "x1", 5, 1, null),
-                    new Item("X2", "x2", 5, 2, null),
-                    new Item("X3", "x3", 5, 3, null));
-            assertEquals(List.of("X1", "X2", "X3"), ids(ordenamiento.mergeSort(empatados, porPeso)));
+        void ordenaTerritoriosPorProduccion() {
+            List<Mapa.Territorio> porProduccion = ordenamiento.mergeSort(MapaInicial.TERRITORIOS,
+                    (a, b) -> Integer.compare(b.produccion(), a.produccion()));
+            assertEquals(List.of("AZU", "BRA", "COR", "NIE"),
+                    porProduccion.subList(0, 4).stream().map(Mapa.Territorio::id).toList(),
+                    "las cuatro ciudades (produccion 3) primero, en orden alfabetico por estabilidad");
         }
 
         @Test
-        void listasVaciasYDeUnElementoNoRompen() {
-            assertTrue(ordenamiento.quickSort(List.of(), porPeso).isEmpty());
-            assertEquals(1, ordenamiento.mergeSort(items().subList(0, 1), porPeso).size());
+        void ningunoModificaLaListaDeEntradaYNoRompenConCasosBorde() {
+            List<Item> original = new ArrayList<>(catalogo());
+            ordenamiento.quickSort(original, porCosto.reversed());
+            ordenamiento.mergeSort(original, porCosto.reversed());
+            assertEquals(List.of("U1", "U2", "U3", "U4", "U5", "U6"), ids(original));
+            assertTrue(ordenamiento.quickSort(List.<Item>of(), porCosto).isEmpty());
+            assertEquals(1, ordenamiento.mergeSort(catalogo().subList(0, 1), porCosto).size());
         }
     }
 
     // ------------------------------------------------------------------
     @Nested
-    @DisplayName("Seleccion - greedy contra programacion dinamica")
+    @DisplayName("Hito 3 y 6 - Greedy contra mochila 0/1 en la compra de unidades")
     class SeleccionTest {
 
         private final Seleccion seleccion = new Seleccion(new Ordenamiento());
 
         @Test
-        void greedyTomaPorRatioYRespetaLaCapacidad() {
-            var r = seleccion.greedy(items(), 10);
-            assertEquals(List.of("I4", "I2"), ids(r.elegidos()));
-            assertEquals(90.0, r.valorTotal(), 1e-9);
-            assertTrue(r.pesoTotal() <= 10);
+        void greedyConSeisDeOroCompraArquerosYMilicia() {
+            var r = seleccion.greedy(catalogo(), 6);
+            assertEquals(List.of("U2", "U1"), ids(r.elegidos()));
+            assertEquals(6.0, r.valorTotal(), 1e-9);
+            assertEquals(4.0, r.pesoTotal(), 1e-9, "le sobran 2 de oro");
         }
 
         @Test
-        void programacionDinamicaEncuentraElOptimo() {
-            var r = seleccion.programacionDinamica(items(), 10);
-            assertEquals(105.0, r.valorTotal(), 1e-9);
-            assertEquals(List.of("I4", "I5"), ids(r.elegidos()));
-            assertEquals(10.0, r.pesoTotal(), 1e-9);
+        void mochilaConSeisDeOroEncuentraPoderNueve() {
+            var r = seleccion.programacionDinamica(catalogo(), 6);
+            assertEquals(9.0, r.valorTotal(), 1e-9);
+            assertEquals(List.of("U1", "U4"), ids(r.elegidos()), "Milicia + Caballeria (empata con la Catapulta)");
+            assertEquals(6.0, r.pesoTotal(), 1e-9, "usa todo el oro");
         }
 
         @Test
-        void greedyNoAlcanzaElOptimoEnMochila01() {
-            // ESTE es el contraejemplo que pide el hito 6
-            double porGreedy = seleccion.greedy(items(), 10).valorTotal();
-            double porDp = seleccion.programacionDinamica(items(), 10).valorTotal();
-            assertTrue(porGreedy < porDp,
-                    "greedy da " + porGreedy + " y el optimo es " + porDp);
-            assertEquals(15.0, porDp - porGreedy, 1e-9);
+        void contraejemploGreedyNoEsOptimoEnVariosPresupuestos() {
+            // presupuesto -> {greedy, optimo}
+            int[][] casos = {{6, 6, 9}, {10, 14, 15}, {14, 19, 22}, {19, 27, 30}};
+            for (int[] c : casos) {
+                assertEquals(c[1], seleccion.greedy(catalogo(), c[0]).valorTotal(), 1e-9, "greedy con " + c[0]);
+                assertEquals(c[2], seleccion.programacionDinamica(catalogo(), c[0]).valorTotal(), 1e-9, "PD con " + c[0]);
+            }
         }
 
         @Test
-        void capacidadCeroNoEligeNada() {
-            assertTrue(seleccion.programacionDinamica(items(), 0).elegidos().isEmpty());
-            assertTrue(seleccion.greedy(items(), 0).elegidos().isEmpty());
+        void conAlgunosPresupuestosGreedyAcierta() {
+            // greedy no siempre falla: con 8 de oro Arqueros + Caballeria = 13 es optimo
+            assertEquals(seleccion.programacionDinamica(catalogo(), 8).valorTotal(),
+                    seleccion.greedy(catalogo(), 8).valorTotal(), 1e-9);
         }
 
         @Test
-        void pesosNoEnterosAvisanEnLugarDeRedondearEnSilencio() {
-            List<Item> fraccionario = List.of(new Item("F1", "f1", 2.5, 10, null));
-            assertThrows(IllegalArgumentException.class,
-                    () -> seleccion.programacionDinamica(fraccionario, 10));
+        void capacidadCeroYPesosNoEnteros() {
+            assertTrue(seleccion.programacionDinamica(catalogo(), 0).elegidos().isEmpty());
+            assertTrue(seleccion.greedy(catalogo(), 0).elegidos().isEmpty());
+            assertThrows(IllegalArgumentException.class, () -> seleccion.programacionDinamica(
+                    List.of(new Item("F", "f", 2.5, 10, null)), 10));
         }
     }
 
     // ------------------------------------------------------------------
     @Nested
-    @DisplayName("Hito 6 - greedy contra PD sobre los paquetes del grupo")
-    class Hito6DominioTest {
+    @DisplayName("Busqueda binaria sobre el catalogo ordenado por costo")
+    class BusquedaBinariaTest {
 
-        private final Seleccion seleccion = new Seleccion(new Ordenamiento());
+        private final BusquedaBinaria bb = new BusquedaBinaria();
+        private final List<Item> porCosto = new Ordenamiento().mergeSort(catalogo(),
+                Comparator.comparingDouble(Item::getPeso));
 
         @Test
-        void greedySobrePaquetesDelDominioNoAlcanzaElOptimo() {
-            // Mismo contraejemplo del README/ENDPOINTS.md, pero con los
-            // paquetes tal como los carga CargaInicial sobre el dominio
-            // propio (nodoId = deposito/cliente en vez de A..E genericos).
-            var g = seleccion.greedy(paquetesDominio(), 10);
-            assertEquals(List.of("I4", "I2"), ids(g.elegidos()), "greedy toma por ratio: I4 y despues I2");
-            assertEquals(90.0, g.valorTotal(), 1e-9);
+        void ultimaUnidadQueSePuedePagar() {
+            assertEquals(4, bb.ultimoMenorOIgual(porCosto, 6, Item::getPeso), "U5 cuesta 6");
+            assertEquals(3, bb.ultimoMenorOIgual(porCosto, 5.5, Item::getPeso), "U4 cuesta 5");
+            assertEquals(-1, bb.ultimoMenorOIgual(porCosto, 0, Item::getPeso), "con 0 no se paga nada");
+            assertEquals(5, bb.ultimoMenorOIgual(porCosto, 100, Item::getPeso));
+        }
 
-            var pd = seleccion.programacionDinamica(paquetesDominio(), 10);
-            assertEquals(List.of("I4", "I5"), ids(pd.elegidos()), "el optimo real es I4 e I5");
-            assertEquals(105.0, pd.valorTotal(), 1e-9);
-            assertEquals(10.0, pd.pesoTotal(), 1e-9);
+        @Test
+        void asequiblesEsElPrefijoDelCatalogo() {
+            assertEquals(List.of("U1", "U2", "U3", "U4", "U5"), ids(bb.asequibles(porCosto, 6)));
+            assertTrue(bb.asequibles(porCosto, 0).isEmpty());
+        }
 
-            assertTrue(g.valorTotal() < pd.valorTotal(),
-                    "greedy da " + g.valorTotal() + " y el optimo es " + pd.valorTotal());
-            assertEquals(15.0, pd.valorTotal() - g.valorTotal(), 1e-9,
-                    "greedy pierde 15: gasta 4kg de capacidad en I2 (Palermo) y deja 3kg sin usar");
+        @Test
+        void busquedaExacta() {
+            assertEquals("U4", porCosto.get(bb.buscar(porCosto, 5, Item::getPeso)).getId());
+            assertEquals(-1, bb.buscar(porCosto, 7, Item::getPeso), "no hay unidad de costo 7");
         }
     }
 
     // ------------------------------------------------------------------
     @Nested
-    @DisplayName("Backtracking - 1 punto")
-    class BacktrackingTest {
+    @DisplayName("AVL con consulta por rango")
+    class ArbolAvlTest {
+
+        @Test
+        void insertarOrdenadoNoDegeneraEnLista() {
+            ArbolAVL<Integer> avl = new ArbolAVL<>();
+            for (int i = 1; i <= 1000; i++) {
+                avl.insertar(i, i); // el peor caso de un ABB comun
+            }
+            assertTrue(avl.estaBalanceado());
+            assertTrue(avl.altura() <= 1.45 * Math.log(1002) / Math.log(2), "altura " + avl.altura());
+            assertTrue(avl.rotaciones() > 0);
+            assertEquals(1000, avl.tamanio());
+        }
+
+        @Test
+        void enOrdenDevuelveTodoOrdenado() {
+            ArbolAVL<Integer> avl = new ArbolAVL<>();
+            Random rnd = new Random(3);
+            List<Integer> valores = new ArrayList<>();
+            for (int i = 0; i < 300; i++) {
+                int v = rnd.nextInt(100); // con repetidos
+                valores.add(v);
+                avl.insertar(v, v);
+            }
+            assertEquals(new Ordenamiento().mergeSort(valores, Integer::compare), avl.enOrden());
+            assertTrue(avl.estaBalanceado());
+        }
+
+        @Test
+        void rangoYKMejoresSobreLosTerritoriosNeutrales() {
+            // defensa inicial de los neutrales: tropas (1 + produccion) + bonus de terreno
+            ArbolAVL<Mapa.Territorio> avl = new ArbolAVL<>();
+            for (Mapa.Territorio t : MapaInicial.TERRITORIOS) {
+                avl.insertar(1 + t.produccion() + t.terreno().bonusDefensa(), t);
+            }
+            // defensa <= 4: llanuras (3) y montanas y bosques (4)
+            List<String> enRango = avl.rango(0, 4).stream().map(Mapa.Territorio::id).toList();
+            assertEquals(Set.of("DOR", "VAD", "CON", "HEL", "IGN", "EBA", "PIN", "SEL"), new HashSet<>(enRango));
+            List<String> mejores = avl.kMejoresEnRango(0, 4, 3, Mapa.Territorio::produccion)
+                    .stream().map(Mapa.Territorio::id).toList();
+            assertEquals(3, mejores.size());
+            for (String id : mejores) {
+                assertTrue(Set.of("DOR", "VAD", "EBA", "PIN", "SEL").contains(id), "produccion 2: " + id);
+            }
+            assertEquals(4, avl.rango(5, 5).size(), "las cuatro ciudades tienen defensa 5");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    @Nested
+    @DisplayName("Huffman sobre el replay")
+    class HuffmanTest {
+
+        private final Huffman huffman = new Huffman();
+
+        @Test
+        void losSimbolosFrecuentesTienenCodigosMasCortos() {
+            var c = huffman.comprimir("AAAAAAABBBCD");
+            assertEquals(1, c.codigos().get('A').length());
+            assertTrue(c.codigos().get('D').length() > c.codigos().get('A').length());
+            assertEquals(7 * 1 + 3 * 2 + 3 + 3, c.bitsComprimidos(), "A=1 bit, B=2, C=3, D=3");
+        }
+
+        @Test
+        void esUnCodigoPrefijoYDecodificaIgual() {
+            String replay = "1A:CU1@AZU,CU4@PIN,APIN>NIEx11+;1R:CU1@BRA,CU4@SEL,MBRA>SELx5,ASEL>CORx16+;";
+            var c = huffman.comprimir(replay);
+            List<String> codigos = new ArrayList<>(c.codigos().values());
+            for (String a : codigos) {
+                for (String b : codigos) {
+                    assertTrue(a.equals(b) || !b.startsWith(a), a + " es prefijo de " + b);
+                }
+            }
+            assertEquals(replay, huffman.descomprimir(c.bits(), c.arbol()));
+            assertTrue(c.tasaCompresion() < 0.7, "el replay comprime bien: " + c.tasaCompresion());
+        }
+
+        @Test
+        void casosBorde() {
+            var uno = huffman.comprimir("ZZZZ");
+            assertEquals("0", uno.codigos().get('Z'));
+            assertEquals("ZZZZ", huffman.descomprimir(uno.bits(), uno.arbol()));
+            assertThrows(IllegalArgumentException.class, () -> huffman.comprimir(""));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    @Nested
+    @DisplayName("Hito 8 - Backtracking de rutas de invasion con poda")
+    class Hito8Test {
 
         private final Backtracking backtracking = new Backtracking();
 
         @Test
-        void encuentraLasTreceRutasSimplesDeAaH() {
+        void hay38RutasSimplesDeCapitalACapital() {
+            assertEquals(38, backtracking.rutasSimples(mapa(), "AZU", "BRA", 1000, 20).size());
+        }
+
+        @Test
+        void conLimiteDe22DiasY6SaltosQuedanSiete() {
+            var rutas = backtracking.rutasSimples(mapa(), "AZU", "BRA", 22, 6);
+            assertEquals(7, rutas.size());
+            double minimo = Double.MAX_VALUE;
+            for (var r : rutas) {
+                assertTrue(r.costoTotal() <= 22);
+                assertTrue(r.vertices().size() - 1 <= 6);
+                assertEquals(new HashSet<>(r.vertices()).size(), r.vertices().size(), "ruta simple");
+                minimo = Math.min(minimo, r.costoTotal());
+            }
+            assertEquals(15.0, minimo, 1e-9, "la mas barata coincide con Dijkstra");
+        }
+
+        @Test
+        void laPodaExploraMenosNodosSinPerderRutas() {
+            var c = backtracking.compararPoda(mapa(), "AZU", "BRA", 22, 6);
+            assertEquals(50, c.exploradosConPoda());
+            assertEquals(93, c.exploradosSinPoda());
+            assertEquals(7, c.rutasEncontradas());
+
+            var c2 = backtracking.compararPoda(mapa(), "AZU", "BRA", 20, 5);
+            assertEquals(43, c2.exploradosConPoda());
+            assertEquals(65, c2.exploradosSinPoda());
+            assertEquals(5, c2.rutasEncontradas());
+        }
+
+        @Test
+        void trecesRutasEnLaSemillaDeLaGuia() {
             assertEquals(13, backtracking.rutasSimples(semilla(true), "A", "H", 1000, 10).size());
-        }
-
-        @Test
-        void todasLasRutasSonSimplesYVanDeOrigenADestino() {
-            for (var r : backtracking.rutasSimples(semilla(true), "A", "H", 1000, 10)) {
-                assertEquals(new HashSet<>(r.vertices()).size(), r.vertices().size(),
-                        "no puede repetir vertices: " + r.vertices());
-                assertEquals("A", r.vertices().get(0));
-                assertEquals("H", r.vertices().get(r.vertices().size() - 1));
-            }
-        }
-
-        @Test
-        void laRestriccionDeCostoDescartaRutas() {
-            var todas = backtracking.rutasSimples(semilla(true), "A", "H", 1000, 10);
-            var baratas = backtracking.rutasSimples(semilla(true), "A", "H", 25, 10);
-            assertTrue(baratas.size() < todas.size());
-            for (var r : baratas) {
-                assertTrue(r.costoTotal() <= 25);
-            }
-        }
-
-        @Test
-        void laRestriccionDeSaltosDescartaRutas() {
-            var cortas = backtracking.rutasSimples(semilla(true), "A", "H", 1000, 3);
-            for (var r : cortas) {
-                assertTrue(r.vertices().size() - 1 <= 3);
-            }
-        }
-
-        @Test
-        void laPodaExploraMenosNodosSinPerderSoluciones() {
-            var c = backtracking.compararPoda(semilla(true), "A", "H", 25, 10);
-            assertTrue(c.exploradosConPoda() < c.exploradosSinPoda(),
-                    "con poda " + c.exploradosConPoda() + ", sin poda " + c.exploradosSinPoda());
-            assertEquals(backtracking.rutasSimples(semilla(true), "A", "H", 25, 10).size(),
-                    c.rutasEncontradas(), "la poda no puede perder rutas validas");
         }
     }
 
     // ------------------------------------------------------------------
     @Nested
-    @DisplayName("Branch and Bound - 1 punto")
-    class RamificacionYPodaTest {
+    @DisplayName("Backtracking tipo 1 - generador de escenarios")
+    class GeneradorDeEscenarioTest {
+
+        private final GeneradorDeEscenario generador = new GeneradorDeEscenario(new Ordenamiento());
+        private final Grafo g = mapa();
+        private final double[][] dist = new CaminosMinimos().floydMatriz(g);
+        private final int[] produccion = MapaInicial.TERRITORIOS.stream().mapToInt(Mapa.Territorio::produccion).toArray();
+        private final boolean[] ciudades = new boolean[12];
+
+        {
+            for (int i = 0; i < 12; i++) {
+                ciudades[i] = MapaInicial.TERRITORIOS.get(i).terreno().puedeSerCapital();
+            }
+        }
+
+        @Test
+        void escenarioClasicoEsAguazulContraBrasaroja() {
+            var e = generador.generar(g, produccion, ciudades, dist, 3, 10, 0, null);
+            assertEquals("AZU", e.capitalAzul());
+            assertEquals(List.of("AZU", "PIN", "VAD"), e.regionAzul());
+            assertEquals("BRA", e.capitalRoja());
+            assertEquals(List.of("BRA", "DOR", "SEL"), e.regionRoja());
+            assertEquals(7, e.produccionAzul());
+            assertEquals(7, e.produccionRoja());
+        }
+
+        @Test
+        void escenariosAleatoriosCumplenTodasLasRestricciones() {
+            Recorridos recorridos = new Recorridos();
+            for (long semilla = 1; semilla <= 25; semilla++) {
+                var e = generador.generar(g, produccion, ciudades, dist, 3, 10, 1, semilla);
+                assertTrue(dist[g.indiceDe(e.capitalAzul())][g.indiceDe(e.capitalRoja())] >= 10, "R1");
+                assertTrue(Math.abs(e.produccionAzul() - e.produccionRoja()) <= 1, "R4");
+                for (List<String> region : List.of(e.regionAzul(), e.regionRoja())) {
+                    assertEquals(3, region.size());
+                    Grafo sub = new Grafo(false);
+                    region.forEach(sub::agregarVertice);
+                    for (Mapa.Ruta r : MapaInicial.RUTAS) {
+                        if (region.contains(r.origen()) && region.contains(r.destino())) {
+                            sub.agregarArista(r.origen(), r.destino(), r.costo());
+                        }
+                    }
+                    assertEquals(1, recorridos.componentesConexas(sub).size(), "R2: region conexa " + region);
+                }
+                for (String a : e.regionAzul()) {
+                    for (Grafo.Arista ar : g.vecinos(g.indiceDe(a))) {
+                        assertFalse(e.regionRoja().contains(g.idDe(ar.destino())), "R3: no se tocan");
+                    }
+                }
+            }
+        }
+
+        @Test
+        void restriccionesImposiblesSeInforman() {
+            assertThrows(IllegalStateException.class,
+                    () -> generador.generar(g, produccion, ciudades, dist, 3, 100, 0, null));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    @Nested
+    @DisplayName("Hito 11 - Branch & Bound de reparto de refuerzos")
+    class Hito11Test {
 
         private final RamificacionYPoda byp = new RamificacionYPoda(new Ordenamiento());
 
         @Test
-        void repartirEnTresContenedoresDaMakespan9() {
-            // pesos 5,4,6,3,7 suman 25. Con 3 contenedores el minimo posible es 9:
-            // con max 8 la capacidad total seria 24 < 25.
-            assertEquals(9.0, byp.repartir(items(), 3).cargaMaxima(), 1e-9);
+        void dosColumnasLlegan21DondeGreedySeQuedaEn20() {
+            // poderes 13, 9, 8, 6, 5, 1 = 42. Optimo 21: {13, 8} y {9, 6, 5, 1}
+            var r = byp.repartir(catalogo(), 2);
+            assertEquals(21.0, r.margenMinimo(), 1e-9);
+            assertEquals(20.0, r.solucionInicial(), 1e-9, "greedy al mas debil da 20");
+            assertEquals(21.0, r.cotaRaiz(), 1e-9, "42 / 2");
+            assertTrue(r.nodosPodados() > 0, "si no poda nada, la cota no sirve");
         }
 
         @Test
-        void noSePierdeNiSeDuplicaNingunItem() {
-            var a = byp.repartir(items(), 3);
-            int total = a.porContenedor().values().stream().mapToInt(List::size).sum();
-            assertEquals(5, total);
+        void tresColumnasLleganAlPromedio() {
+            var r = byp.repartir(catalogo(), 3);
+            assertEquals(14.0, r.margenMinimo(), 1e-9);
+            int total = r.porFrente().values().stream().mapToInt(List::size).sum();
+            assertEquals(6, total, "ninguna unidad se pierde ni se duplica");
         }
 
         @Test
-        void laPodaActuaYSeReporta() {
-            var a = byp.repartir(items(), 3);
-            assertTrue(a.nodosPodados() > 0, "si no poda nada, la cota no sirve");
-            assertTrue(a.cotaInicial() >= a.cargaMaxima(), "LPT es una cota superior");
+        void frentesConMargenInicialDistinto() {
+            // un frente ya muy fuerte no deberia recibir nada
+            var frentes = List.of(new RamificacionYPoda.Frente("CON", -4),
+                    new RamificacionYPoda.Frente("NIE", 2), new RamificacionYPoda.Frente("AZU", 40));
+            var r = byp.repartir(catalogo(), frentes);
+            assertTrue(r.porFrente().get("AZU").isEmpty());
+            // CON recibe 13+6+5 (=20) y NIE 9+8+1 (=20): los dos frentes debiles quedan parejos
+            assertEquals(20.0, r.margenMinimo(), 1e-9);
         }
 
         @Test
-        void unSoloContenedorRecibeTodo() {
-            assertEquals(25.0, byp.repartir(items(), 1).cargaMaxima(), 1e-9);
+        void coincideConLaFuerzaBrutaEnInstanciasAleatorias() {
+            Random rnd = new Random(11);
+            for (int caso = 0; caso < 40; caso++) {
+                int n = 2 + rnd.nextInt(5);
+                int k = 1 + rnd.nextInt(3);
+                List<Item> unidades = new ArrayList<>();
+                for (int i = 0; i < n; i++) {
+                    unidades.add(new Item("X" + i, "x", 1, 1 + rnd.nextInt(12), null));
+                }
+                List<RamificacionYPoda.Frente> frentes = new ArrayList<>();
+                for (int j = 0; j < k; j++) {
+                    frentes.add(new RamificacionYPoda.Frente("F" + j, rnd.nextInt(9) - 4));
+                }
+                assertEquals(fuerzaBruta(unidades, frentes), byp.repartir(unidades, frentes).margenMinimo(), 1e-9,
+                        "caso " + caso);
+            }
+        }
+
+        /** Prueba las k^n asignaciones. Solo sirve para validar el B&B en casos chicos. */
+        private double fuerzaBruta(List<Item> unidades, List<RamificacionYPoda.Frente> frentes) {
+            int n = unidades.size();
+            int k = frentes.size();
+            double mejor = Double.NEGATIVE_INFINITY;
+            int total = (int) Math.pow(k, n);
+            for (int codigo = 0; codigo < total; codigo++) {
+                double[] carga = new double[k];
+                for (int j = 0; j < k; j++) {
+                    carga[j] = frentes.get(j).margen();
+                }
+                int c = codigo;
+                for (int i = 0; i < n; i++) {
+                    carga[c % k] += unidades.get(i).getValor();
+                    c /= k;
+                }
+                double minimo = Double.POSITIVE_INFINITY;
+                for (double v : carga) {
+                    minimo = Math.min(minimo, v);
+                }
+                mejor = Math.max(mejor, minimo);
+            }
+            return mejor;
         }
 
         @Test
-        void cantidadDeContenedoresInvalidaFalla() {
-            assertThrows(IllegalArgumentException.class, () -> byp.repartir(items(), 0));
+        void sinFrentesFalla() {
+            assertThrows(IllegalArgumentException.class, () -> byp.repartir(catalogo(), 0));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    @Nested
+    @DisplayName("MIN-MAX y alfa-beta sobre los fosforos de la clase 11")
+    class MinimaxTest {
+
+        /** Fosforos: se sacan 1 o 2; pierde el que se queda con el ultimo (n == 1 en su turno). */
+        record EstadoFosforos(int fosforos, boolean turnoMax) { }
+
+        static final class Fosforos implements JuegoDeDosJugadores<EstadoFosforos, Integer> {
+            @Override
+            public List<Integer> jugadas(EstadoFosforos e) {
+                List<Integer> r = new ArrayList<>();
+                for (int q = 1; q <= 2 && q < e.fosforos(); q++) {
+                    r.add(q);
+                }
+                return r;
+            }
+
+            @Override
+            public EstadoFosforos aplicar(EstadoFosforos e, Integer quitar) {
+                return new EstadoFosforos(e.fosforos() - quitar, !e.turnoMax());
+            }
+
+            @Override
+            public boolean esTerminal(EstadoFosforos e) {
+                return e.fosforos() == 1;
+            }
+
+            @Override
+            public double evaluar(EstadoFosforos e) {
+                return e.turnoMax() ? -Minimax.VICTORIA : Minimax.VICTORIA; // al que le toca con 1, pierde
+            }
+
+            @Override
+            public boolean turnoDeMax(EstadoFosforos e) {
+                return e.turnoMax();
+            }
+        }
+
+        private final Minimax minimax = new Minimax();
+        private final Fosforos fosforos = new Fosforos();
+
+        @Test
+        void conCincoGanaMaxSacandoUno() {
+            var d = minimax.minimax(fosforos, new EstadoFosforos(5, true), 20);
+            assertTrue(d.valor() > 0, "con 5 fosforos gana el que mueve");
+            assertEquals(1, d.jugada(), "deja al rival en 4, posicion perdedora");
         }
 
         @Test
-        void elMakespanNuncaBajaDeLaMedia() {
-            var a = byp.repartir(items(), 3);
-            double suma = items().stream().mapToDouble(Item::getPeso).sum();
-            assertTrue(a.cargaMaxima() >= suma / 3, "seria una solucion imposible");
+        void sePierdeExactamenteCuandoNEsCongruenteConUnoModuloTres() {
+            for (int n = 2; n <= 16; n++) {
+                double v = minimax.minimax(fosforos, new EstadoFosforos(n, true), 30).valor();
+                assertEquals(n % 3 == 1, v < 0, "n = " + n);
+            }
+        }
+
+        @Test
+        void alfaBetaDaElMismoValorMirandoMenosNodos() {
+            var mm = minimax.minimax(fosforos, new EstadoFosforos(15, true), 30);
+            var ab = minimax.alfaBeta(fosforos, new EstadoFosforos(15, true), 30);
+            assertEquals(mm.valor(), ab.valor(), 1e-9);
+            assertEquals(mm.jugada(), ab.jugada());
+            assertTrue(ab.nodosVisitados() < mm.nodosVisitados(),
+                    "alfa-beta " + ab.nodosVisitados() + " contra minimax " + mm.nodosVisitados());
+            assertTrue(ab.cortes() > 0);
+        }
+
+        /** Un arbol de juego explicito: nombre de nodo -> hijos, y valores en las hojas. */
+        record Nodo(String nombre, boolean max) { }
+
+        static final class Arbol implements JuegoDeDosJugadores<Nodo, String> {
+            private final Map<String, List<String>> hijos;
+            private final Map<String, Double> hojas;
+
+            Arbol(Map<String, List<String>> hijos, Map<String, Double> hojas) {
+                this.hijos = hijos;
+                this.hojas = hojas;
+            }
+
+            @Override public List<String> jugadas(Nodo e) { return hijos.getOrDefault(e.nombre(), List.of()); }
+            @Override public Nodo aplicar(Nodo e, String hijo) { return new Nodo(hijo, !e.max()); }
+            @Override public boolean esTerminal(Nodo e) { return hojas.containsKey(e.nombre()); }
+            @Override public double evaluar(Nodo e) { return hojas.getOrDefault(e.nombre(), 0.0); }
+            @Override public boolean turnoDeMax(Nodo e) { return e.max(); }
+        }
+
+        @Test
+        void elArbolDeLaClase13DosDeNueveHojasNoSeMiran() {
+            // raiz MAX con tres MIN: [3, 12, 8], [2, 4, 6], [14, 5, 2]. Valor 3.
+            Map<String, List<String>> hijos = Map.of(
+                    "raiz", List.of("m1", "m2", "m3"),
+                    "m1", List.of("a", "b", "c"), "m2", List.of("d", "e", "f"), "m3", List.of("g", "h", "i"));
+            Map<String, Double> hojas = Map.of("a", 3.0, "b", 12.0, "c", 8.0, "d", 2.0, "e", 4.0, "f", 6.0,
+                    "g", 14.0, "h", 5.0, "i", 2.0);
+            Arbol arbol = new Arbol(hijos, hojas);
+            var mm = minimax.minimax(arbol, new Nodo("raiz", true), 2);
+            var ab = minimax.alfaBeta(arbol, new Nodo("raiz", true), 2);
+            assertEquals(3.0, mm.valor(), 1e-9);
+            assertEquals(3.0, ab.valor(), 1e-9);
+            assertEquals("m1", ab.jugada());
+            assertEquals(13, mm.nodosVisitados(), "raiz + 3 MIN + 9 hojas");
+            assertEquals(11, ab.nodosVisitados(), "el 4 y el 6 no se miran");
+        }
+
+        @Test
+        void prefiereLaVictoriaMasRapida() {
+            // "lenta" gana dentro de dos jugadas mas; "rapida" gana ya. Las dos valen VICTORIA,
+            // pero restando la profundidad la rapida vale mas aunque se mire segunda.
+            Map<String, List<String>> hijos = Map.of(
+                    "raiz", List.of("lenta", "rapida"), "lenta", List.of("l2"), "l2", List.of("fin"));
+            Map<String, Double> hojas = Map.of("rapida", Minimax.VICTORIA, "fin", Minimax.VICTORIA);
+            var d = minimax.minimax(new Arbol(hijos, hojas), new Nodo("raiz", true), 5);
+            assertEquals("rapida", d.jugada());
+            assertEquals(Minimax.VICTORIA - 1, d.valor(), 1e-9);
+        }
+
+        @Test
+        void laRaizTieneQueSerDeMax() {
+            assertThrows(IllegalArgumentException.class,
+                    () -> minimax.minimax(fosforos, new EstadoFosforos(5, false), 3));
+            assertThrows(IllegalArgumentException.class,
+                    () -> minimax.alfaBeta(fosforos, new EstadoFosforos(5, true), 0));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    @Nested
+    @DisplayName("Heuristica greedy ganancia / riesgo")
+    class HeuristicaGreedyTest {
+
+        private final HeuristicaGreedy greedy = new HeuristicaGreedy(new Ordenamiento());
+
+        record Objetivo(String id, double ganancia, double riesgo) { }
+
+        @Test
+        void ordenaPorRatioYDesempataPorOrdenDeEntrada() {
+            List<Objetivo> candidatos = List.of(new Objetivo("A", 4, 4), new Objetivo("B", 6, 2),
+                    new Objetivo("C", 2, 2), new Objetivo("D", 1000, 9));
+            List<String> orden = greedy.rankingPorRatio(candidatos, Objetivo::ganancia, Objetivo::riesgo)
+                    .stream().map(Objetivo::id).toList();
+            assertEquals(List.of("D", "B", "A", "C"), orden, "A y C empatan en 1.0: queda primero A");
+            assertEquals("D", greedy.elegir(candidatos, Objetivo::ganancia, Objetivo::riesgo).id());
+            assertNull(greedy.elegir(List.<Objetivo>of(), Objetivo::ganancia, Objetivo::riesgo));
         }
     }
 }

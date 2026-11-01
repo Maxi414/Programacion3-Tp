@@ -14,6 +14,14 @@ import java.util.PriorityQueue;
  * UNIDAD: Grafos II (clase 5) y PD sobre grafos (clase 8)
  * PUNTAJE: parte de los 3 puntos de "Dijkstra, Prim, Kruskal"
  *          y 1 punto de programacion dinamica si implementan Floyd.
+ *
+ * En el juego:
+ *  - Dijkstra es la fase de MARCHA: llevar tropas de un territorio propio a
+ *    otro por el camino de menos dias de marcha, pasando solo por territorio
+ *    propio. Si el camino cuesta mas que los puntos de marcha del turno, la
+ *    marcha no se puede hacer.
+ *  - Floyd es la matriz de distancias precalculada que usa la IA para evaluar
+ *    amenazas en O(1).
  */
 @Component
 public class CaminosMinimos {
@@ -142,20 +150,58 @@ public class CaminosMinimos {
      */
     public Map<String, Double> floydWarshall(Grafo grafo) {
         int n = grafo.cantidadVertices();
+        double[][] m = floydMatriz(grafo);
+
+        Map<String, Double> resultado = new LinkedHashMap<>();
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (m[i][j] != Grafo.INFINITO) {
+                    resultado.put(grafo.idDe(i) + "->" + grafo.idDe(j), m[i][j]);
+                }
+            }
+        }
+        return resultado;
+    }
+
+    /**
+     * El nucleo de Floyd-Warshall, devolviendo la MATRIZ de distancias.
+     *
+     * USO EN EL JUEGO: el mapa no cambia durante la partida (cambian los
+     * duenos y las tropas, no las rutas), asi que la matriz se calcula UNA vez
+     * al crear la partida y la IA la consulta en O(1) cada vez que evalua un
+     * estado ("que tan lejos esta este ejercito enemigo de mi capital"). La
+     * funcion de evaluacion se llama miles de veces por jugada: correr
+     * Dijkstra en cada una seria O((V+E) log V) por consulta en vez de O(1).
+     *
+     * Complejidad: O(V^3) tiempo, O(V^2) espacio.
+     */
+    public double[][] floydMatriz(Grafo grafo) {
+        return floydConConteo(grafo, new long[2]);
+    }
+
+    /**
+     * @param contadores [0] = combinaciones (k,i,j) evaluadas, [1] = mejoras.
+     *                   Se usan para la comparacion contra Dijkstra del hito 7.
+     */
+    private double[][] floydConConteo(Grafo grafo, long[] contadores) {
+        int n = grafo.cantidadVertices();
         double[][] m = grafo.matrizDeAdyacencia();
 
         for (int k = 0; k < n; k++) {          // <-- el intermedio va afuera
             for (int i = 0; i < n; i++) {
                 if (m[i][k] == Grafo.INFINITO) {
+                    contadores[0] += n;   // la fila entera se descarta de una
                     continue; // no hay forma de llegar a k desde i: nada que mejorar
                 }
                 for (int j = 0; j < n; j++) {
+                    contadores[0]++;
                     if (m[k][j] == Grafo.INFINITO) {
                         continue;
                     }
                     double porK = m[i][k] + m[k][j];
                     if (porK < m[i][j]) {
                         m[i][j] = porK;
+                        contadores[1]++;
                     }
                 }
             }
@@ -170,16 +216,115 @@ public class CaminosMinimos {
                                 + grafo.idDe(i) + ". El camino minimo no esta definido.");
             }
         }
+        return m;
+    }
 
-        Map<String, Double> resultado = new LinkedHashMap<>();
-        for (int i = 0; i < n; i++) {
+    /** Evidencia del hito 7: Floyd-Warshall contra correr Dijkstra V veces. */
+    public record ComparacionTodosContraTodos(int vertices, int aristas,
+                                              long floydCombinacionesEvaluadas, long floydMejoras,
+                                              long dijkstraVerticesExpandidos, long dijkstraAristasRelajadas,
+                                              long dijkstraInsercionesEnCola,
+                                              boolean mismosResultados, String conclusion) { }
+
+    /**
+     * Hito 7: "comparar los nodos expandidos contra correr Dijkstra V veces".
+     *
+     * Floyd no "expande" vertices como Dijkstra: evalua las V^3 combinaciones
+     * (k, i, j) sin importar cuantas aristas haya. Dijkstra desde cada origen
+     * expande cada vertice alcanzable una vez y relaja cada arista una vez, o
+     * sea V*(V + E) operaciones de cola en total, cada una con su log V.
+     *
+     * Las dos tecnicas tienen que dar EXACTAMENTE las mismas distancias: si no
+     * coinciden, alguna de las dos tiene un bug. Eso tambien se informa.
+     *
+     * Floyd conviene en grafos DENSOS (E ~ V^2) y cuando hay pesos negativos
+     * sin ciclos negativos. Dijkstra V veces conviene en grafos RALOS como el
+     * mapa del juego (cada territorio linda con 2 a 4).
+     */
+    public ComparacionTodosContraTodos compararFloydContraDijkstra(Grafo grafo) {
+        int n = grafo.cantidadVertices();
+        validarPesosNoNegativos(grafo); // Dijkstra no los admite
+
+        long[] contFloyd = new long[2];
+        double[][] porFloyd = floydConConteo(grafo, contFloyd);
+
+        long[] contDijkstra = new long[3]; // expandidos, relajaciones, inserciones
+        boolean coinciden = true;
+        for (int origen = 0; origen < n; origen++) {
+            double[] dist = dijkstraDesde(grafo, origen, contDijkstra);
             for (int j = 0; j < n; j++) {
-                if (m[i][j] != Grafo.INFINITO) {
-                    resultado.put(grafo.idDe(i) + "->" + grafo.idDe(j), m[i][j]);
+                if (Math.abs(dist[j] - porFloyd[origen][j]) > 1e-9
+                        && !(dist[j] == Grafo.INFINITO && porFloyd[origen][j] == Grafo.INFINITO)) {
+                    coinciden = false;
                 }
             }
         }
+
+        String conclusion = contDijkstra[0] + contDijkstra[1] < contFloyd[0]
+                ? "Grafo ralo: Dijkstra V veces hace menos trabajo que las V^3 combinaciones de Floyd."
+                : "Grafo denso: las V^3 combinaciones de Floyd no son peores que Dijkstra V veces.";
+        return new ComparacionTodosContraTodos(n, grafo.cantidadAristas(),
+                contFloyd[0], contFloyd[1],
+                contDijkstra[0], contDijkstra[1], contDijkstra[2],
+                coinciden, conclusion);
+    }
+
+    /**
+     * Dijkstra COMPLETO desde un origen: distancia minima a cada vertice
+     * alcanzable (los inalcanzables no aparecen).
+     *
+     * USO EN EL JUEGO: la IA lo corre sobre el subgrafo de territorios
+     * propios para saber desde donde puede traer tropas a un frente sin
+     * pasarse de los puntos de marcha del turno.
+     *
+     * Complejidad: O((V + E) log V), igual que dijkstra(origen, destino) sin
+     * la parada temprana.
+     */
+    public Map<String, Double> distanciasDesde(Grafo grafo, String origenId) {
+        validarPesosNoNegativos(grafo);
+        double[] dist = dijkstraDesde(grafo, grafo.indiceDe(origenId), new long[3]);
+        Map<String, Double> resultado = new LinkedHashMap<>();
+        for (int i = 0; i < dist.length; i++) {
+            if (dist[i] != Grafo.INFINITO) {
+                resultado.put(grafo.idDe(i), dist[i]);
+            }
+        }
         return resultado;
+    }
+
+    /**
+     * Dijkstra completo (sin destino) desde un origen, contando trabajo.
+     * contadores: [0] vertices expandidos, [1] aristas relajadas, [2] pushes.
+     */
+    private double[] dijkstraDesde(Grafo grafo, int origen, long[] contadores) {
+        int n = grafo.cantidadVertices();
+        double[] dist = new double[n];
+        boolean[] listo = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            dist[i] = Grafo.INFINITO;
+        }
+        dist[origen] = 0.0;
+        PriorityQueue<EnCola> cola = new PriorityQueue<>((x, y) -> Double.compare(x.distancia(), y.distancia()));
+        cola.add(new EnCola(origen, 0.0));
+        contadores[2]++;
+        while (!cola.isEmpty()) {
+            int u = cola.poll().vertice();
+            if (listo[u]) {
+                continue;
+            }
+            listo[u] = true;
+            contadores[0]++;
+            for (Grafo.Arista a : grafo.vecinos(u)) {
+                contadores[1]++;
+                double candidato = dist[u] + a.costo();
+                if (candidato < dist[a.destino()]) {
+                    dist[a.destino()] = candidato;
+                    cola.add(new EnCola(a.destino(), candidato));
+                    contadores[2]++;
+                }
+            }
+        }
+        return dist;
     }
 
     /**

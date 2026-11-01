@@ -16,19 +16,37 @@ import java.util.Map;
  * criterio de poda: alli se podaba por VIABILIDAD (esta rama viola una
  * restriccion), aca se poda por OPTIMALIDAD (esta rama no puede mejorar lo que
  * ya tengo).
+ *
+ * PROBLEMA DE REPARTO DEL JUEGO: al terminar la fase de compra hay que
+ * repartir las unidades nuevas entre los frentes del imperio. Un imperio cae
+ * por su frente mas debil, asi que el objetivo es MAXIMIZAR EL MARGEN DEL
+ * FRENTE MAS DEBIL (problema max-min, el "gemelo" del makespan):
+ *
+ *     maximizar  min_j ( margen_j + suma del poder asignado al frente j )
+ *
+ * donde margen_j = defensa actual del frente j - amenaza enemiga sobre el.
  */
 @Component
 public class RamificacionYPoda {
 
+    /** Un frente que recibe refuerzos: su id y su margen antes de reforzar. */
+    public record Frente(String id, double margen) { }
+
     /**
-     * Asignacion de items a contenedores.
+     * Resultado del reparto.
      *
-     * NOTA: se agregaron nodosExplorados y nodosPodados al record original del
-     * scaffold porque el hito 11 pide reportar los nodos podados. El controller
-     * no necesita cambios: sigue devolviendo el record tal cual.
+     * @param porFrente         unidades asignadas a cada frente
+     * @param margenFinal       margen de cada frente despues de reforzar
+     * @param margenMinimo      el valor optimo: margen del frente mas debil
+     * @param nodosExplorados   nodos del arbol que se visitaron
+     * @param nodosPodados      ramas cortadas por la COTA (poda por optimalidad)
+     * @param podadosPorSimetria ramas descartadas por ser simetricas a otra ya explorada
+     * @param solucionInicial   valor de la solucion greedy con la que se arranca
+     * @param cotaRaiz          cota superior optimista en la raiz del arbol
      */
-    public record Asignacion(Map<String, List<Item>> porContenedor, double cargaMaxima,
-                             int nodosExplorados, int nodosPodados, double cotaInicial) { }
+    public record Reparto(Map<String, List<Item>> porFrente, Map<String, Double> margenFinal,
+                          double margenMinimo, int nodosExplorados, int nodosPodados,
+                          int podadosPorSimetria, double solucionInicial, double cotaRaiz) { }
 
     private final Ordenamiento ordenamiento;
 
@@ -38,172 +56,206 @@ public class RamificacionYPoda {
 
     /** Estado mutable de la busqueda, para no arrastrar diez parametros. */
     private static final class Busqueda {
-        double[] carga;
-        int[] asignacion;
+        double[] carga;          // margen actual de cada frente
+        int[] asignacion;        // asignacion[i] = frente de la unidad i
         int[] mejorAsignacion;
-        double mejorMakespan;
-        double sumaTotal;
+        double mejor;            // mejor margen minimo encontrado
+        double[] restanteDesde;  // restanteDesde[i] = poder total de las unidades i..n-1
         int explorados;
         int podados;
+        int simetricos;
     }
 
     /**
-     * Repartir items entre k contenedores identicos minimizando la carga del
-     * contenedor mas cargado (problema de makespan, P||Cmax).
+     * Version del scaffold: repartir los items entre k columnas identicas que
+     * arrancan con margen 0. Es el caso "partir el ejercito en k columnas lo
+     * mas parejas posible".
+     */
+    public Reparto repartir(List<Item> unidades, int cantidadFrentes) {
+        if (cantidadFrentes < 1) {
+            throw new IllegalArgumentException(
+                    "La cantidad de frentes debe ser al menos 1: " + cantidadFrentes);
+        }
+        List<Frente> frentes = new ArrayList<>();
+        for (int j = 0; j < cantidadFrentes; j++) {
+            frentes.add(new Frente("columna-" + j, 0.0));
+        }
+        return repartir(unidades, frentes);
+    }
+
+    /**
+     * Branch & Bound del reparto de refuerzos.
      *
-     * RAMIFICAR: cada item puede ir a cualquiera de los k contenedores, asi que
-     * el arbol tiene k^n hojas. Se ramifica item por item, en orden de peso
-     * decreciente: colocar primero los items grandes hace que el makespan
-     * parcial crezca rapido y la poda empiece a cortar mucho antes.
+     * RAMIFICAR: cada unidad puede ir a cualquiera de los k frentes, asi que el
+     * arbol tiene k^n hojas. Se ramifica unidad por unidad, en orden de poder
+     * DECRECIENTE (MergeSort propio): decidir primero las unidades grandes hace
+     * que las cargas se separen rapido y la cota empiece a cortar antes.
      *
-     * ACOTAR: la cota inferior del makespan alcanzable desde el nodo actual es
-     *     cota = max( carga maxima actual , suma de TODOS los pesos / k )
-     * Los dos terminos son optimistas por separado:
-     *   - la carga maxima actual ya esta puesta y solo puede crecer
-     *   - ni el reparto perfecto puede bajar de la media, porque el trabajo
-     *     total es fijo y hay k contenedores
-     * Al ser una cota INFERIOR verdadera, si ya es >= al mejor makespan
-     * conocido, ninguna hoja de esa rama puede mejorarlo: podar es seguro.
-     * Si la cota fuera pesimista (sobrestimara el potencial de la rama) se
-     * podarian ramas que contenian el optimo y el resultado dejaria de serlo.
+     * ACOTAR: se MAXIMIZA, asi que la cota tiene que ser SUPERIOR (optimista:
+     * nunca puede decir que la rama da menos de lo que realmente puede dar).
+     *     cota = min( (suma de margenes actuales + poder restante) / k ,
+     *                 margen del frente mas debil hoy + poder restante )
+     * Los dos terminos son cotas superiores verdaderas del minimo final:
+     *   - el minimo de k numeros nunca supera su promedio, y la suma final de
+     *     los margenes es fija: lo que hay hoy mas todo lo que falta repartir
+     *   - el frente mas debil de hoy, aun recibiendo TODAS las unidades que
+     *     faltan, no puede terminar mas alto que su margen + el poder restante;
+     *     y el minimo final es menor o igual que el valor final de ese frente
+     * Como la cota nunca subestima, si ya es <= a la mejor solucion conocida
+     * ninguna hoja de esa rama puede mejorarla estrictamente: podar es seguro.
+     * Una cota pesimista (que subestime) podaria ramas con el optimo adentro
+     * y el resultado dejaria de serlo SIN AVISAR.
      *
      * PODAR: dos cortes.
      *   1. por cota, el descripto arriba
-     *   2. por simetria: los contenedores son identicos, asi que poner el
-     *      primer item en el contenedor 0 o en el 5 da soluciones equivalentes.
-     *      Se permite usar un contenedor vacio solo si es el primero vacio.
-     *      Sin esto se exploran k! copias del mismo reparto.
+     *   2. por simetria: dos frentes con el MISMO margen actual son
+     *      intercambiables (el objetivo solo depende del multiconjunto de
+     *      margenes), asi que se prueba solo el primero de cada grupo de iguales
      *
-     * COTA INICIAL: se arranca con una solucion LPT (Longest Processing Time:
-     * items de mayor a menor, cada uno al contenedor menos cargado). Da un
-     * makespan razonable de entrada, con lo cual la poda por cota funciona
-     * desde el primer nodo en vez de tener que descubrir una solucion primero.
+     * SOLUCION INICIAL: greedy "cada unidad al frente mas debil del momento".
+     * Da un valor razonable de entrada y la poda funciona desde el primer nodo.
      *
      * Complejidad: O(k^n) en el peor caso, muchisimo menor con la poda.
      * Espacio: O(n + k) mas la pila de recursion, de profundidad n.
      */
-    public Asignacion repartir(List<Item> items, int cantidadContenedores) {
-        if (cantidadContenedores < 1) {
-            throw new IllegalArgumentException(
-                    "La cantidad de contenedores debe ser al menos 1: " + cantidadContenedores);
+    public Reparto repartir(List<Item> unidades, List<Frente> frentes) {
+        if (frentes.isEmpty()) {
+            throw new IllegalArgumentException("Hace falta al menos un frente para repartir.");
         }
-        if (items.isEmpty()) {
-            return new Asignacion(contenedoresVacios(cantidadContenedores), 0.0, 0, 0, 0.0);
-        }
-        for (Item i : items) {
-            if (i.getPeso() < 0) {
+        for (Item u : unidades) {
+            if (u.getValor() < 0) {
                 throw new IllegalArgumentException(
-                        "El item " + i.getId() + " tiene peso negativo: " + i.getPeso());
+                        "La unidad " + u.getId() + " tiene poder negativo: " + u.getValor());
             }
         }
+        int k = frentes.size();
 
-        // Orden decreciente por peso, con el MergeSort propio.
-        Comparator<Item> porPesoDescendente = (a, b) -> Double.compare(b.getPeso(), a.getPeso());
-        List<Item> ordenados = ordenamiento.mergeSort(items, porPesoDescendente);
+        Comparator<Item> porPoderDescendente = (a, b) -> Double.compare(b.getValor(), a.getValor());
+        List<Item> ordenadas = ordenamiento.mergeSort(unidades, porPoderDescendente);
+        int n = ordenadas.size();
 
         Busqueda b = new Busqueda();
-        b.carga = new double[cantidadContenedores];
-        b.asignacion = new int[ordenados.size()];
-        b.mejorAsignacion = new int[ordenados.size()];
-        b.sumaTotal = 0.0;
-        for (Item i : ordenados) {
-            b.sumaTotal += i.getPeso();
+        b.carga = new double[k];
+        for (int j = 0; j < k; j++) {
+            b.carga[j] = frentes.get(j).margen();
+        }
+        b.asignacion = new int[n];
+        b.mejorAsignacion = new int[n];
+        b.restanteDesde = new double[n + 1];
+        for (int i = n - 1; i >= 0; i--) {
+            b.restanteDesde[i] = b.restanteDesde[i + 1] + ordenadas.get(i).getValor();
         }
 
-        b.mejorMakespan = solucionInicialLpt(ordenados, cantidadContenedores, b.mejorAsignacion);
-        double cotaInicial = b.mejorMakespan;
+        b.mejor = solucionInicialGreedy(ordenadas, frentes, b.mejorAsignacion);
+        double solucionInicial = b.mejor;
+        double cotaRaiz = cota(b, 0);
 
-        ramificar(ordenados, 0, cantidadContenedores, b);
+        ramificar(ordenadas, 0, b);
 
-        Map<String, List<Item>> porContenedor = contenedoresVacios(cantidadContenedores);
-        for (int i = 0; i < ordenados.size(); i++) {
-            porContenedor.get("contenedor-" + b.mejorAsignacion[i]).add(ordenados.get(i));
+        Map<String, List<Item>> porFrente = new LinkedHashMap<>();
+        Map<String, Double> margenFinal = new LinkedHashMap<>();
+        double[] cargaFinal = new double[k];
+        for (int j = 0; j < k; j++) {
+            porFrente.put(frentes.get(j).id(), new ArrayList<>());
+            cargaFinal[j] = frentes.get(j).margen();
         }
-        return new Asignacion(porContenedor, b.mejorMakespan, b.explorados, b.podados, cotaInicial);
+        for (int i = 0; i < n; i++) {
+            int j = b.mejorAsignacion[i];
+            porFrente.get(frentes.get(j).id()).add(ordenadas.get(i));
+            cargaFinal[j] += ordenadas.get(i).getValor();
+        }
+        for (int j = 0; j < k; j++) {
+            margenFinal.put(frentes.get(j).id(), cargaFinal[j]);
+        }
+        return new Reparto(porFrente, margenFinal, b.mejor, b.explorados, b.podados,
+                b.simetricos, solucionInicial, cotaRaiz);
     }
 
-    private void ramificar(List<Item> items, int indice, int k, Busqueda b) {
+    private void ramificar(List<Item> unidades, int indice, Busqueda b) {
         b.explorados++;
 
-        if (indice == items.size()) { // hoja: todos los items colocados
-            double makespan = 0.0;
-            for (double c : b.carga) {
-                makespan = Math.max(makespan, c);
-            }
-            if (makespan < b.mejorMakespan) {
-                b.mejorMakespan = makespan;
-                System.arraycopy(b.asignacion, 0, b.mejorAsignacion, 0, items.size());
+        if (indice == unidades.size()) { // hoja: todas las unidades asignadas
+            double minimo = minimo(b.carga);
+            if (minimo > b.mejor) {
+                b.mejor = minimo;
+                System.arraycopy(b.asignacion, 0, b.mejorAsignacion, 0, unidades.size());
             }
             return;
         }
 
-        double cargaMaximaActual = 0.0;
-        for (double c : b.carga) {
-            cargaMaximaActual = Math.max(cargaMaximaActual, c);
-        }
-
-        // COTA INFERIOR optimista del makespan alcanzable desde aca
-        double cota = Math.max(cargaMaximaActual, b.sumaTotal / k);
-        if (cota >= b.mejorMakespan) {
+        // COTA SUPERIOR optimista del margen minimo alcanzable desde aca
+        if (cota(b, indice) <= b.mejor) {
             b.podados++;
             return; // ninguna hoja de esta rama puede mejorar lo que ya tengo
         }
 
-        Item item = items.get(indice);
-        boolean yaProbeUnContenedorVacio = false;
-
-        for (int c = 0; c < k; c++) {
-            // PODA POR SIMETRIA: los contenedores vacios son intercambiables
-            if (b.carga[c] == 0.0) {
-                if (yaProbeUnContenedorVacio) {
-                    continue;
-                }
-                yaProbeUnContenedorVacio = true;
-            }
-            // corte local: si poner el item aca ya empata o supera el mejor, no sirve
-            if (b.carga[c] + item.getPeso() >= b.mejorMakespan) {
-                b.podados++;
+        double poder = unidades.get(indice).getValor();
+        for (int j = 0; j < b.carga.length; j++) {
+            // PODA POR SIMETRIA: un frente con el mismo margen que otro anterior
+            // genera exactamente el mismo subarbol
+            if (yaHayUnFrenteAnteriorIgual(b.carga, j)) {
+                b.simetricos++;
                 continue;
             }
+            b.carga[j] += poder;          // decision: la unidad va al frente j
+            b.asignacion[indice] = j;
 
-            b.carga[c] += item.getPeso();
-            b.asignacion[indice] = c;
+            ramificar(unidades, indice + 1, b);
 
-            ramificar(items, indice + 1, k, b);
-
-            b.carga[c] -= item.getPeso(); // retroceso
+            b.carga[j] -= poder;          // retroceso
         }
+    }
+
+    /** cota = min( promedio final de los margenes , frente mas debil + todo lo que falta ). */
+    private double cota(Busqueda b, int indice) {
+        double restante = b.restanteDesde[indice];
+        double suma = 0.0;
+        for (double c : b.carga) {
+            suma += c;
+        }
+        double porPromedio = (suma + restante) / b.carga.length;
+        double porFrenteMasDebil = minimo(b.carga) + restante;
+        return Math.min(porPromedio, porFrenteMasDebil);
+    }
+
+    private boolean yaHayUnFrenteAnteriorIgual(double[] carga, int j) {
+        for (int anterior = 0; anterior < j; anterior++) {
+            if (carga[anterior] == carga[j]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private double minimo(double[] valores) {
+        double m = Double.POSITIVE_INFINITY;
+        for (double v : valores) {
+            m = Math.min(m, v);
+        }
+        return m;
     }
 
     /**
-     * LPT: items de mayor a menor, cada uno al contenedor menos cargado.
-     * Es una heuristica greedy con garantia conocida de 4/3 del optimo.
-     * Aca se usa solo para tener una cota superior inicial.
+     * Greedy: unidades de mayor a menor poder, cada una al frente MAS DEBIL del
+     * momento. Es la misma idea que LPT en el makespan. No siempre es optima:
+     * con poderes 13, 9, 8, 6, 5, 1 y dos frentes da 20, y el optimo es 21
+     * ({13, 8} contra {9, 6, 5, 1}). Aca solo se usa como cota inicial.
      */
-    private double solucionInicialLpt(List<Item> ordenados, int k, int[] asignacionSalida) {
-        double[] carga = new double[k];
-        for (int i = 0; i < ordenados.size(); i++) {
-            int menos = 0;
-            for (int c = 1; c < k; c++) {
-                if (carga[c] < carga[menos]) {
-                    menos = c;
+    private double solucionInicialGreedy(List<Item> ordenadas, List<Frente> frentes, int[] asignacionSalida) {
+        double[] carga = new double[frentes.size()];
+        for (int j = 0; j < carga.length; j++) {
+            carga[j] = frentes.get(j).margen();
+        }
+        for (int i = 0; i < ordenadas.size(); i++) {
+            int masDebil = 0;
+            for (int j = 1; j < carga.length; j++) {
+                if (carga[j] < carga[masDebil]) {
+                    masDebil = j;
                 }
             }
-            carga[menos] += ordenados.get(i).getPeso();
-            asignacionSalida[i] = menos;
+            carga[masDebil] += ordenadas.get(i).getValor();
+            asignacionSalida[i] = masDebil;
         }
-        double makespan = 0.0;
-        for (double c : carga) {
-            makespan = Math.max(makespan, c);
-        }
-        return makespan;
-    }
-
-    private Map<String, List<Item>> contenedoresVacios(int k) {
-        Map<String, List<Item>> mapa = new LinkedHashMap<>();
-        for (int c = 0; c < k; c++) {
-            mapa.put("contenedor-" + c, new ArrayList<>());
-        }
-        return mapa;
+        return minimo(carga);
     }
 }

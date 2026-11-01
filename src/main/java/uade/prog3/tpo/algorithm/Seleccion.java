@@ -14,6 +14,12 @@ import java.util.List;
  *
  * Los dos metodos resuelven EL MISMO problema con tecnicas distintas.
  * Esa comparacion es lo que se evalua.
+ *
+ * EN EL JUEGO es la fase de COMPRA: el mercado ofrece una unidad de cada tipo
+ * por turno (0/1: se compra o no se compra, no hay media catapulta). Cada
+ * Item es una unidad: peso = costo en oro, valor = poder de combate. Con el
+ * oro del turno como capacidad, hay que elegir que unidades comprar para
+ * maximizar el poder total.
  */
 @Component
 public class Seleccion {
@@ -47,15 +53,20 @@ public class Seleccion {
      * (mochila fraccional) si es optimo, porque el ultimo item se puede partir
      * y la capacidad nunca queda desperdiciada.
      *
-     * CONTRAEJEMPLO con los datos semilla y capacidad 10:
-     *   I4 (peso 3, valor 50, ratio 16.67)
-     *   I2 (peso 4, valor 40, ratio 10.00)
-     *   I5 (peso 7, valor 55, ratio  7.86)
-     *   I3 (peso 6, valor 30, ratio  5.00)
-     *   I1 (peso 5, valor 10, ratio  2.00)
-     * Greedy toma I4, despues I2, y ya no entra nada: peso 7, valor 90.
-     * El optimo real es {I4, I5}: peso 10, valor 105.
-     * Greedy pierde 15 porque gasta 4 de capacidad en I2 y deja 3 sin usar.
+     * CONTRAEJEMPLO con el catalogo del juego y 6 de oro (el oro del primer
+     * turno del escenario clasico):
+     *   U2 Arqueros   (costo 3, poder  5, ratio 1.667)
+     *   U6 Guardia    (costo 8, poder 13, ratio 1.625)
+     *   U4 Caballeria (costo 5, poder  8, ratio 1.600)
+     *   U3 Lanceros   (costo 4, poder  6, ratio 1.500)
+     *   U5 Catapulta  (costo 6, poder  9, ratio 1.500)
+     *   U1 Milicia    (costo 1, poder  1, ratio 1.000)
+     * Greedy toma Arqueros (3 de oro), despues ya no entra nada hasta la
+     * Milicia: gasta 4, poder 6, y le sobran 2 de oro.
+     * El optimo real vale 9 y gasta los 6: la PD devuelve Milicia + Caballeria
+     * (la Catapulta sola empata en 9). Greedy pierde 3 de poder (un tercio)
+     * porque la mejor unidad "por moneda" bloquea la compra que aprovecha todo
+     * el presupuesto.
      */
     public Resultado greedy(List<Item> items, double capacidad) {
         if (capacidad < 0) {
@@ -101,7 +112,8 @@ public class Seleccion {
      * Es PSEUDOPOLINOMICA: W es un VALOR de la entrada, no su tamano. Escribir
      * W en binario ocupa log(W) bits, asi que el costo es exponencial respecto
      * del tamano real de la entrada. Con W = 1.000.000 la tabla es inmanejable
-     * aunque haya solo 5 items.
+     * aunque haya solo 6 unidades. En el juego W es el oro del turno (decenas),
+     * asi que la tabla es chica y la IA puede resolverla en cada nodo del arbol.
      */
     public Resultado programacionDinamica(List<Item> items, int capacidad) {
         if (capacidad < 0) {

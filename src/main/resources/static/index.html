@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Conquista — Programación III</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header>
+    <h1>Conquista</h1>
+    <span class="subtitulo">conquista de territorios por turnos · cada fase es un algoritmo</span>
+    <form id="nueva" class="nueva">
+        <label>Dificultad
+            <select id="dificultad">
+                <option value="FACIL">Fácil (greedy)</option>
+                <option value="NORMAL" selected>Normal (alfa-beta, prof. 2)</option>
+                <option value="DIFICIL">Difícil (alfa-beta, prof. 4)</option>
+            </select>
+        </label>
+        <label>Escenario
+            <select id="escenario">
+                <option value="CLASICO">Clásico</option>
+                <option value="ALEATORIO">Aleatorio (backtracking)</option>
+            </select>
+        </label>
+        <button type="submit">Nueva partida</button>
+    </form>
+</header>
+
+<main id="juego" class="oculto">
+    <section class="tablero">
+        <div id="banner" class="banner oculto"></div>
+        <svg id="mapa" viewBox="0 0 1000 700" role="img" aria-label="Mapa de territorios"></svg>
+        <div class="leyenda">
+            <span><i class="punto azul"></i> AZUL (vos)</span>
+            <span><i class="punto rojo"></i> ROJO (IA)</span>
+            <span><i class="punto neutral"></i> neutral</span>
+            <span>♛ capital</span>
+            <span>línea gruesa = red de abastecimiento (MST)</span>
+            <span>borde punteado = aislado</span>
+            <span>número en la ruta = días de marcha</span>
+        </div>
+        <details class="ayuda">
+            <summary>Cómo se juega</summary>
+            <ol>
+                <li><b>Cobro</b> (automático): cobrás la producción de tus territorios conectados a la capital
+                    menos el mantenimiento de tu red de abastecimiento (costo del árbol de recubrimiento mínimo / 4).</li>
+                <li><b>Reclutamiento</b>: comprá unidades del mercado (una de cada tipo) y ubicalas en un territorio abastecido.
+                    La mochila 0/1 te sugiere la compra óptima.</li>
+                <li><b>Marcha</b>: hacé clic en un territorio tuyo y después en otro tuyo. Dijkstra busca el camino
+                    más barato por territorio propio; tiene que costar 8 días o menos.</li>
+                <li><b>Ataque</b>: hacé clic en un territorio tuyo y después en un vecino ajeno. Conquistás si mandás
+                    más tropas que su defensa (tropas + terreno + 2 si es capital).</li>
+            </ol>
+            <p>Se pueden saltear fases pero no volver atrás. Gana quien toma la capital rival; a las 30 rondas, el de mayor puntaje.</p>
+        </details>
+    </section>
+
+    <aside class="panel">
+        <div class="tarjeta" id="estado"></div>
+
+        <div class="tarjeta" id="accion">
+            <h2>Acción</h2>
+            <div id="accionContenido" class="tenue">Hacé clic en un territorio tuyo.</div>
+        </div>
+
+        <div class="tarjeta" id="mercado">
+            <h2>Mercado <small>(fase 2)</small></h2>
+            <div id="mercadoContenido"></div>
+        </div>
+
+        <button id="terminar" class="grande">Terminar turno ▸</button>
+
+        <div class="tarjeta">
+            <h2>Algoritmos</h2>
+            <div class="herramientas">
+                <button data-h="sugerencias" title="Greedy ganancia/riesgo">¿A quién ataco? <small>greedy</small></button>
+                <button data-h="alcance" title="BFS por niveles">Alcance en 2 turnos <small>BFS</small></button>
+                <button data-h="objetivos" title="AVL con consulta por rango">Objetivos <small>AVL</small></button>
+                <button data-h="imperio" title="DFS + Prim + Kruskal">Mi imperio <small>DFS + MST</small></button>
+                <button data-h="invasion" title="Backtracking con poda">Rutas de invasión <small>backtracking</small></button>
+                <button data-h="ranking" title="QuickSort y MergeSort">Ranking <small>Quick/Merge</small></button>
+                <button data-h="consejo" title="Alfa-beta para AZUL">Consejo de la IA <small>alfa-beta</small></button>
+                <button data-h="comparacion" title="MIN-MAX contra alfa-beta">MIN-MAX vs alfa-beta</button>
+                <button data-h="replay" title="Huffman sobre el replay">Replay <small>Huffman</small></button>
+            </div>
+            <div id="resultado" class="resultado tenue">El resultado de cada algoritmo aparece acá.</div>
+        </div>
+
+        <div class="tarjeta" id="ia"></div>
+
+        <div class="tarjeta">
+            <h2>Crónica</h2>
+            <ol id="log" class="log"></ol>
+        </div>
+    </aside>
+</main>
+
+<section id="portada" class="portada">
+    <p>Elegí la dificultad y el escenario arriba y empezá una <b>nueva partida</b>.</p>
+    <p class="tenue">Necesita el backend corriendo con Neo4j (ver README).</p>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>

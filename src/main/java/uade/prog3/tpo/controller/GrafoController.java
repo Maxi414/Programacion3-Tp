@@ -12,14 +12,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Endpoints de los algoritmos sobre grafos.
+ * Endpoints de los algoritmos sobre el grafo del mapa.
  *
- * El cableado ya esta hecho: cada endpoint carga el grafo y delega en la
- * clase de algoritmo correspondiente. Mientras el algoritmo no este
- * implementado, la respuesta es 501 con un mensaje claro.
+ * Cada endpoint carga el grafo y delega en la clase de algoritmo
+ * correspondiente. Los controllers NO contienen logica algoritmica.
  *
- * Lo unico que hay que tocar para que un endpoint funcione es el metodo
- * del paquete algorithm. Los controllers NO deben contener logica algoritmica.
+ * El mapa del juego es NO DIRIGIDO (una ruta se recorre en los dos sentidos al
+ * mismo costo), asi que todos los algoritmos lo cargan con cargar(false).
+ * /resumen admite ?dirigido=true para ver la carga dirigida del scaffold.
  */
 @RestController
 @RequestMapping("/api/grafo")
@@ -43,9 +43,13 @@ public class GrafoController {
         this.backtracking = backtracking;
     }
 
+    private Grafo mapa() {
+        return grafoService.cargar(false);
+    }
+
     /** Metadatos del grafo cargado. Sirve para verificar la conexion a la base. */
     @GetMapping("/resumen")
-    public Map<String, Object> resumen(@RequestParam(defaultValue = "true") boolean dirigido) {
+    public Map<String, Object> resumen(@RequestParam(defaultValue = "false") boolean dirigido) {
         Grafo g = grafoService.cargar(dirigido);
         return Map.of(
                 "vertices", g.cantidadVertices(),
@@ -54,55 +58,86 @@ public class GrafoController {
                 "ids", g.ids());
     }
 
-    /** GET /api/grafo/dfs?origen=A */
+    /** GET /api/grafo/dfs?origen=AZU */
     @GetMapping("/dfs")
     public List<String> dfs(@RequestParam String origen) {
-        return recorridos.dfs(grafoService.cargar(true), origen);
+        return recorridos.dfs(mapa(), origen);
     }
 
-    /** GET /api/grafo/bfs?origen=A */
+    /** GET /api/grafo/bfs?origen=AZU */
     @GetMapping("/bfs")
     public List<String> bfs(@RequestParam String origen) {
-        return recorridos.bfs(grafoService.cargar(true), origen);
+        return recorridos.bfs(mapa(), origen);
     }
 
-    /** GET /api/grafo/dijkstra?origen=A&destino=H */
+    /** GET /api/grafo/alcance?origenes=AZU,PIN,VAD&k=2  (BFS multi-fuente por niveles) */
+    @GetMapping("/alcance")
+    public Map<String, Integer> alcance(@RequestParam List<String> origenes,
+                                        @RequestParam(defaultValue = "2") int k) {
+        return recorridos.bfsPorNiveles(mapa(), origenes, k);
+    }
+
+    /** GET /api/grafo/componentes  (DFS repetido: componentes conexas) */
+    @GetMapping("/componentes")
+    public List<List<String>> componentes() {
+        return recorridos.componentesConexas(mapa());
+    }
+
+    /** GET /api/grafo/dijkstra?origen=AZU&destino=BRA */
     @GetMapping("/dijkstra")
     public CaminosMinimos.Camino dijkstra(@RequestParam String origen, @RequestParam String destino) {
-        return caminosMinimos.dijkstra(grafoService.cargar(true), origen, destino);
+        return caminosMinimos.dijkstra(mapa(), origen, destino);
     }
 
     /** GET /api/grafo/floyd */
     @GetMapping("/floyd")
     public Map<String, Double> floyd() {
-        return caminosMinimos.floydWarshall(grafoService.cargar(true));
+        return caminosMinimos.floydWarshall(mapa());
     }
 
-    /** GET /api/grafo/ucs?origen=A&destino=H */
+    /** GET /api/grafo/floyd/comparacion  (hito 7: Floyd contra Dijkstra V veces) */
+    @GetMapping("/floyd/comparacion")
+    public CaminosMinimos.ComparacionTodosContraTodos floydContraDijkstra() {
+        return caminosMinimos.compararFloydContraDijkstra(mapa());
+    }
+
+    /** GET /api/grafo/ucs?origen=AZU&destino=CON */
     @GetMapping("/ucs")
-    public CaminosMinimos.Camino ucs(@RequestParam String origen, @RequestParam String destino) {
-        return caminosMinimos.ucs(grafoService.cargar(true), origen, destino);
+    public Map<String, Object> ucs(@RequestParam String origen, @RequestParam String destino) {
+        Grafo g = mapa();
+        return Map.of(
+                "camino", caminosMinimos.ucs(g, origen, destino),
+                "expandidosUcs", caminosMinimos.expandidosUcs(g, origen, destino),
+                "expandidosDijkstraCompleto", caminosMinimos.expandidosDijkstraCompleto(g, origen));
     }
 
-    /** GET /api/grafo/prim?origen=A   (el MST exige grafo NO dirigido) */
+    /** GET /api/grafo/prim?origen=AZU   (el MST exige grafo NO dirigido) */
     @GetMapping("/prim")
     public ArbolRecubrimiento.Mst prim(@RequestParam String origen) {
-        return arbolRecubrimiento.prim(grafoService.cargar(false), origen);
+        return arbolRecubrimiento.prim(mapa(), origen);
     }
 
     /** GET /api/grafo/kruskal */
     @GetMapping("/kruskal")
     public ArbolRecubrimiento.Mst kruskal() {
-        return arbolRecubrimiento.kruskal(grafoService.cargar(false));
+        return arbolRecubrimiento.kruskal(mapa());
     }
 
-    /** GET /api/grafo/rutas?origen=A&destino=H&costoMaximo=30&saltosMaximos=5 */
+    /** GET /api/grafo/rutas?origen=AZU&destino=BRA&costoMaximo=22&saltosMaximos=6 */
     @GetMapping("/rutas")
     public List<Backtracking.Ruta> rutas(@RequestParam String origen,
                                          @RequestParam String destino,
                                          @RequestParam(defaultValue = "1000") double costoMaximo,
                                          @RequestParam(defaultValue = "10") int saltosMaximos) {
-        return backtracking.rutasSimples(grafoService.cargar(true), origen, destino,
-                costoMaximo, saltosMaximos);
+        return backtracking.rutasSimples(mapa(), origen, destino, costoMaximo, saltosMaximos);
+    }
+
+    /** GET /api/grafo/rutas/poda?origen=AZU&destino=BRA&costoMaximo=22&saltosMaximos=6  (hito 8) */
+    @GetMapping("/rutas/poda")
+    public Backtracking.ComparacionPoda rutasConYSinPoda(@RequestParam String origen,
+                                                         @RequestParam String destino,
+                                                         @RequestParam(defaultValue = "1000") double costoMaximo,
+                                                         @RequestParam(defaultValue = "10") int saltosMaximos) {
+        return backtracking.compararPoda(mapa(), origen, destino, costoMaximo, saltosMaximos);
     }
 }
