@@ -316,6 +316,7 @@ src/main/java/uade/prog3/tpo/
 src/main/resources/static/   el juego en el navegador (HTML + JS + SVG)
 src/test/java/uade/prog3/tpo/
 docs/
+    Documento_Maestro_TPO.pdf   documento maestro del trabajo, en formato APA 7
     ENDPOINTS.md        ficha de cada endpoint con complejidad justificada
     COMPLEJIDADES.md    informe de complejidades (hito 10)
     api.http            requests de ejemplo
@@ -334,6 +335,13 @@ Se utilizó Claude (Anthropic, Claude Code) como asistente durante el desarrollo
 La comprensión de los algoritmos no fue delegada: cada integrante puede
 explicar el funcionamiento, la complejidad y las estructuras de datos de
 todos los algoritmos entregados.
+
+## Documento maestro
+
+`docs/Documento_Maestro_TPO.pdf` reúne todo el trabajo en formato APA 7:
+marco teórico, arquitectura, dominio y reglas, algoritmos con su
+complejidad, la IA, la verificación de cada hito, el cumplimiento de la
+rúbrica, la declaración de uso de IA y las referencias.
 
 ## Consignas
 
