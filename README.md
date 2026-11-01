@@ -294,7 +294,7 @@ export $(cat .env | xargs)
 # 2. Compilar y ejecutar (la primera vez carga el mapa)
 ./mvnw spring-boot:run
 
-# 3. Jugar
+# 3. Jugar (cómo se juega: docs/Manual_de_Usuario.pdf)
 #    http://localhost:8080          <- el juego en el navegador
 curl "http://localhost:8080/api/grafo/resumen"
 # -> {"vertices":12,"aristas":17,"dirigido":false,"ids":["AZU","BRA",...]}
@@ -317,6 +317,7 @@ src/main/resources/static/   el juego en el navegador (HTML + JS + SVG)
 src/test/java/uade/prog3/tpo/
 docs/
     Documento_Maestro_TPO.pdf   documento maestro del trabajo, en formato APA 7
+    Manual_de_Usuario.pdf       manual de usuario del juego, con capturas
     ENDPOINTS.md        ficha de cada endpoint con complejidad justificada
     COMPLEJIDADES.md    informe de complejidades (hito 10)
     api.http            requests de ejemplo
