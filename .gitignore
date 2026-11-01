@@ -15,3 +15,6 @@ target/
 *.env
 !.env.example
 application-local.properties
+
+### Material de la cursada (PDFs de clases, no va al repo) ###
+PROGRA 3 COMPLETO/

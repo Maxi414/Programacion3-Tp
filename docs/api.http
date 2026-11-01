@@ -1,28 +1,85 @@
-### Verificar conexión y datos
+### Verificar conexion y datos   (esperado: 12 vertices, 17 aristas)
 GET http://localhost:8080/api/grafo/resumen
 
 ### Recorridos
-GET http://localhost:8080/api/grafo/dfs?origen=A
-GET http://localhost:8080/api/grafo/bfs?origen=A
+GET http://localhost:8080/api/grafo/dfs?origen=AZU
+GET http://localhost:8080/api/grafo/bfs?origen=AZU
+GET http://localhost:8080/api/grafo/alcance?origenes=AZU,PIN,VAD&k=2
+GET http://localhost:8080/api/grafo/componentes
 
-### Caminos mínimos    (esperado: A->C = 7, A->H = 20)
-GET http://localhost:8080/api/grafo/dijkstra?origen=A&destino=C
-GET http://localhost:8080/api/grafo/dijkstra?origen=A&destino=H
+### Caminos minimos    (esperado: AZU->BRA = 15, PIN->CON = 9 y no 10)
+GET http://localhost:8080/api/grafo/dijkstra?origen=AZU&destino=BRA
+GET http://localhost:8080/api/grafo/dijkstra?origen=PIN&destino=CON
 GET http://localhost:8080/api/grafo/floyd
-GET http://localhost:8080/api/grafo/ucs?origen=A&destino=H
+GET http://localhost:8080/api/grafo/floyd/comparacion
+GET http://localhost:8080/api/grafo/ucs?origen=AZU&destino=CON
 
-### Arbol de recubrimiento minimo    (esperado: 7 aristas, costo total 27)
-GET http://localhost:8080/api/grafo/prim?origen=A
+### Arbol de recubrimiento minimo    (esperado: 11 aristas, costo total 37)
+GET http://localhost:8080/api/grafo/prim?origen=AZU
 GET http://localhost:8080/api/grafo/kruskal
 
-### Ordenamiento
+### Backtracking: rutas de invasion    (esperado: 7 rutas; 50 nodos con poda, 93 sin)
+GET http://localhost:8080/api/grafo/rutas?origen=AZU&destino=BRA&costoMaximo=22&saltosMaximos=6
+GET http://localhost:8080/api/grafo/rutas/poda?origen=AZU&destino=BRA&costoMaximo=22&saltosMaximos=6
+
+### Catalogo: ordenamiento y busqueda binaria
 GET http://localhost:8080/api/seleccion/quicksort?criterio=ratio
-GET http://localhost:8080/api/seleccion/mergesort?criterio=peso
+GET http://localhost:8080/api/seleccion/mergesort?criterio=costo
+GET http://localhost:8080/api/seleccion/binaria?oro=6
 
-### Seleccion    (comparar: greedy no deberia igualar a dinamica)
-GET http://localhost:8080/api/seleccion/greedy?capacidad=10
-GET http://localhost:8080/api/seleccion/dinamica?capacidad=10
+### Greedy contra mochila    (esperado: greedy 6, mochila 9)
+GET http://localhost:8080/api/seleccion/greedy?capacidad=6
+GET http://localhost:8080/api/seleccion/dinamica?capacidad=6
 
-### Backtracking y Branch and Bound
-GET http://localhost:8080/api/grafo/rutas?origen=A&destino=H&costoMaximo=30&saltosMaximos=6
-GET http://localhost:8080/api/seleccion/repartir?contenedores=3
+### Branch and Bound y Huffman    (esperado: margen minimo 21)
+GET http://localhost:8080/api/seleccion/repartir?frentes=2
+GET http://localhost:8080/api/seleccion/huffman?texto=ABRACADABRA
+
+### ---------------------------------------------------------------
+### Juego. Crear una partida y copiar el "id" de la respuesta en @id
+POST http://localhost:8080/api/juego?dificultad=NORMAL&escenario=CLASICO
+
+###
+@id = reemplazar-por-el-id
+
+### Escenario aleatorio reproducible (backtracking)
+GET http://localhost:8080/api/juego/escenario?semilla=42
+
+### Estado de la partida
+GET http://localhost:8080/api/juego/{{id}}
+
+### Fase 2: comprar (mochila sugerida con 6 de oro)
+POST http://localhost:8080/api/juego/{{id}}/comprar
+Content-Type: application/json
+
+{"compras":[{"unidad":"U1","destino":"VAD"},{"unidad":"U4","destino":"VAD"}]}
+
+### Fase 3: marchar (Dijkstra por territorio propio)
+POST http://localhost:8080/api/juego/{{id}}/marchar
+Content-Type: application/json
+
+{"origen":"AZU","destino":"VAD","tropas":3}
+
+### Fase 4: atacar
+POST http://localhost:8080/api/juego/{{id}}/atacar
+Content-Type: application/json
+
+{"origen":"VAD","destino":"CON","tropas":14}
+
+### Terminar el turno: juega la IA
+POST http://localhost:8080/api/juego/{{id}}/terminar
+
+### Consultas (una por algoritmo)
+GET http://localhost:8080/api/juego/{{id}}/marcha?origen=PIN&destino=VAD
+GET http://localhost:8080/api/juego/{{id}}/mercado
+GET http://localhost:8080/api/juego/{{id}}/sugerencias
+GET http://localhost:8080/api/juego/{{id}}/objetivos?k=3
+GET http://localhost:8080/api/juego/{{id}}/alcance?turnos=2
+GET http://localhost:8080/api/juego/{{id}}/imperio?jugador=AZUL
+GET http://localhost:8080/api/juego/{{id}}/reparto
+GET http://localhost:8080/api/juego/{{id}}/ranking?criterio=valor
+GET http://localhost:8080/api/juego/{{id}}/ranking?criterio=amenaza
+GET http://localhost:8080/api/juego/{{id}}/ia/comparacion?profundidad=4
+GET http://localhost:8080/api/juego/{{id}}/consejo
+GET http://localhost:8080/api/juego/{{id}}/replay
+GET http://localhost:8080/api/juego/{{id}}/invasion?costoMaximo=22&saltosMaximos=6
